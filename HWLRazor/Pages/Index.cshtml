@@ -1,0 +1,320 @@
+﻿@page
+@model HWLRazor.Pages.IndexModel
+@{
+    ViewData["Title"] = "Home page";
+    var fileUploaded = Model.FileUploaded;
+}
+
+
+
+<div class="text-center">
+    <img src="~/images/Horizon2016_WideWL.png" alt="Horizon Well Logging, Inc." class="img-fluid logo" />
+    <p>Upload your HWL file to analyze it:</p>
+</div>
+
+<div class="row">
+    <div class="col-md-6 offset-md-3 @(fileUploaded ? "hidden" : "")">
+        <form method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <input type="file" asp-for="UploadedFile" class="form-control-file">
+            </div>
+            <button type="submit" class="btn btn-primary">Upload</button>
+        </form>
+        <p>@Model.Message</p>
+    </div>
+</div>
+
+@if (fileUploaded)
+
+{
+    <div class="row">
+        <div class="col-md-6">
+            <h1>@Model.WellInfo.Well</h1>
+            <p>@Model.WellInfo.Company</p>
+        </div>
+    </div>
+    @using System.Reflection
+    @using System.Text.Json;
+
+    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#programTable" aria-expanded="false" aria-controls="programTable">
+    Program Info
+</button>
+    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#wellInfoTable" aria-expanded="false" aria-controls="wellInfoTable">
+    Well Info
+</button>
+    @if (Model.Annotations != null)
+{
+    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#annotationsTable" aria-expanded="false" aria-controls="annotationsTable">
+        Annotations
+    </button>
+}
+    @if(Model.CasingPoints != null) {
+<button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#casingpointsTable" aria-expanded="false" aria-controls="casingpointsTable">
+        Casing Points
+</button>
+    }
+    @if(Model.NewBits != null) {
+<button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#newbitsTable" aria-expanded="false" aria-controls="newbitsTable">
+    New Bits
+</button>
+    }
+    @if(Model.LithologyLegend != null) {
+    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#lithLegendTable" aria-expanded="false" aria-controls="lithLegendTable">
+            Lithology Legend
+    </button>
+            }
+    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#descriptionsTable" aria-expanded="false" aria-controls="descriptionsTable">
+    Descriptions
+</button>
+
+    @if (Model.FileType == "OG")
+    {
+        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#plotScalesTable" aria-expanded="false" aria-controls="plotScalesTable">
+            Plot Scales
+    </button>}
+
+
+    <div class="collapse" id="programTable">
+        <table class="table">
+            <tr>
+                <th>Label</th>
+                <th>Value</th>
+            </tr>
+            @{
+                var programProperties = Model.ProgramInfo.GetType().GetProperties();
+                foreach (PropertyInfo property in programProperties)
+                {
+                    object value = property.GetValue(Model.ProgramInfo);
+                    if (value is List<string> listValue)
+                    {
+                        value = string.Join(", ", listValue);
+                    }
+
+                    <tr>
+                        <td>@property.Name</td>
+                        <td>@value</td>
+                    </tr>
+                }
+            }
+        </table>
+    </div>
+    <div class="collapse" id="wellInfoTable">
+            <table class="table">
+                <tr>
+                    <th>Label</th>
+                    <th>Value</th>
+                </tr>
+                @{
+                    var wellInfoProperties = Model.WellInfo.GetType().GetProperties();
+                    foreach (PropertyInfo property in wellInfoProperties)
+                    {
+                        object value = property.GetValue(Model.WellInfo);
+                        if (value is List<string> listValue)
+                        {
+                            value = string.Join(", ", listValue);
+                        }
+
+                        <tr>
+                            <td>@property.Name</td>
+                            <td>@value</td>
+                    </tr>
+                }
+            }
+        </table>
+    </div>
+    if (Model.Annotations != null)
+    {
+        <div class="collapse" id="annotationsTable">
+            <table class="table">
+                <tr>
+                    <th>Depth</th>
+                    <th>Text</th>
+                </tr>
+                @foreach (var annotation in Model.Annotations)
+                {
+                    var fontStyle = annotation.Italic ? "italic" : "normal";
+                    var textDecoration = annotation.Underline ? "underline" : "none";
+                    var fontWeight = annotation.Bold ? "bold" : "normal";
+                    <tr>
+                        <td>@annotation.Depth</td>
+                        <td style="font-size: @annotation.FontHeight; font-family: '@annotation.Font'; font-style: @fontStyle; text-decoration: @textDecoration; color: @annotation.Color; font-weight: @fontWeight;">
+                            @annotation.Text
+                        </td>
+                    </tr>
+                }
+            </table>
+        </div>
+    }
+    @if(Model.CasingPoints != null) {
+    <div class="collapse" id="casingpointsTable">
+        <table class="table">
+            <thead>
+                @if(Model.CasingPoints.Count > 0) {
+                    @Html.Raw(Model.RenderTableHeaderProperty(Model.CasingPoints[0]))
+                }
+            </thead>
+            <tbody>
+                @foreach (var item in Model.CasingPoints)
+                {
+                    @Html.Raw(Model.RenderTableRowProperty(item))
+                }
+            </tbody>
+        </table>
+    </div>
+    }
+    @if(Model.NewBits != null) {
+    <div class="collapse" id="newbitsTable">
+        <table class="table">
+            <thead>
+                @if(Model.NewBits.Count > 0) {
+                    @Html.Raw(Model.RenderTableHeaderProperty(Model.NewBits[0]))
+                }
+            </thead>
+            <tbody>
+                @foreach (var item in Model.NewBits)
+                {
+                    @Html.Raw(Model.RenderTableRowProperty(item))
+                }
+            </tbody>
+        </table>
+    </div>
+    }
+    @if(Model.LithologyLegend != null) {
+    <div class="collapse" id="lithLegendTable">
+        <table class="table">
+                <tr>
+                    <th>Number</th>
+                    <th>Lithology</th>
+                </tr>
+            <tbody>
+                @foreach (var item in Model.LithologyLegend)
+                {
+                        <tr>
+                            <td>@item.Key</td>
+                            <td>@item.Value</td>
+                        </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    }
+    if (Model.Descriptions != null)
+    {
+        <div class="collapse" id="descriptionsTable">
+            <table class="table">
+                <tr>
+                    <th>Depth</th>
+                    <th>Text</th>
+                </tr>
+                @foreach (var description in Model.Descriptions)
+                {
+                    var fontStyle = description.Italic ? "italic" : "normal";
+                    var textDecoration = description.Underlined ? "underline" : "none";
+                    var fontWeight = description.Bold ? "bold" : "normal";
+                    <tr>
+                        <td>@description.Depth</td>
+                        <td style="font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', sans-serif; font-style: @fontStyle; text-decoration: @textDecoration; color: @description.Color; font-weight: @fontWeight;">
+                            @description.Description
+                        </td>
+                    </tr>
+                }
+            </table>
+        </div>
+    }
+
+
+
+
+    @if (Model.FileType == "OG")
+    {
+        <div class="collapse" id="plotScalesTable">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Depth</th>
+                        @foreach (var parameter in Model.PlottedDrillingParameters)
+                        {
+                            int? position = parameter.OGPlotScalePosition;
+                            int? overscalePosition = parameter.OGPlotOverscalePosition;
+
+                            if (position.HasValue)
+                            {
+                                <th>@parameter.ShortName</th>
+                            }
+
+                            if (overscalePosition.HasValue)
+                            {
+                                <th>@parameter.ShortName Ovr</th>
+                            }
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int rowIndex = 0; rowIndex < Model.PlotScales.Count; rowIndex++)
+                    {
+                        var plotScale = Model.PlotScales[rowIndex];
+                        <tr>
+                            <td>@plotScale[0]</td>
+                            @foreach (var parameter in Model.PlottedDrillingParameters)
+                            {
+                                <td contenteditable="true" class="editable-cell">@parameter.PlotScales[Convert.ToDouble(@plotScale[0])]</td>
+                                <td contenteditable="true" class="editable-cell">@parameter.PlotOverscales[Convert.ToDouble(@plotScale[0])]</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <button id="saveButton" type="submit">Save</button>
+        @section Scripts {
+            <script>
+                document.getElementById("saveButton").addEventListener("click", function (e) {
+                    e.preventDefault();
+                    const plotScalesInputs = document.querySelectorAll(".editable-cell");
+                    const plotScalesData = [];
+
+                    plotScalesInputs.forEach(input => {
+                        const row = parseInt(input.getAttribute("data-row"));
+                        const col = parseInt(input.getAttribute("data-col"));
+
+                        if (!plotScalesData[row]) {
+                            plotScalesData[row] = [];
+                        }
+
+                        plotScalesData[row][col] = input.value;
+                    });
+
+                    fetch('/Index?handler=UpdatePlotScales', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                        },
+                        body: JSON.stringify(plotScalesData)
+                    }).then(response => {
+                        if (response.ok) {
+                            alert("Data saved successfully.");
+                        } else {
+                            alert("Error saving data.");
+                        }
+                    });
+                });
+            </script>
+        }
+    }
+
+    var warnings = Model.TestScalesForPlottedParameters();
+    <script>
+    @{
+        var serializedWarnings = JsonSerializer.Serialize(warnings);
+    }
+    let warnings = JSON.parse('@Html.Raw(serializedWarnings)');
+    console.log("Warnings:", warnings); // Log the warnings to the console
+
+    if (warnings.length > 0) {
+        let allWarnings = warnings.join('\n');
+        alert(allWarnings);
+    }
+</script>
+
+}
