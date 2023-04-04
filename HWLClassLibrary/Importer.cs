@@ -6,10 +6,15 @@ namespace HwlFileAnalyzer
 {
     public class Importer
     {
-        private readonly TableOfContents TOC;
+        public readonly TableOfContents TOC;
 
         private ProgramInfo Program;
 
+        public string UnparseOGPlotScales(List<string> items)
+        {
+            string result = "$" + string.Join("|", items);
+            return result;
+        }
 
         public Importer(string filePath)
         {
@@ -21,7 +26,7 @@ namespace HwlFileAnalyzer
         public string FileType => Program.WellType;
 
         //public List<string[]> PlotScales { get; set; }
-        public List<string> RawText { get; }
+        public List<string> RawText { get; set; }
         private HwlData Hwl { get; set; }
         public static List<string> GetFileText(string filePath)
         {
@@ -425,6 +430,7 @@ namespace HwlFileAnalyzer
             var wellInfo = new WellInfo(splitLine);
             return wellInfo;
         }
+
         //public void importDPData(DrillingParameter dp)
         //{
         //    dp.Color = Hwl.Colors[dp.ColorPosition];

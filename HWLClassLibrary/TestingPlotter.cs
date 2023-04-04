@@ -1,6 +1,0 @@
-﻿namespace HwlFileAnalyzer
-{
-    class TestingPlotter
-    {
-    }
-}

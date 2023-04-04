@@ -29,8 +29,8 @@
 {
     <div class="row">
         <div class="col-md-6">
-            <h1>@Model.WellInfo.Well</h1>
-            <p>@Model.WellInfo.Company</p>
+            <h1>@Model.HwlData.WellInfo.Well</h1>
+            <p>@Model.HwlData.WellInfo.Company</p>
         </div>
     </div>
     @using System.Reflection
@@ -42,23 +42,23 @@
     <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#wellInfoTable" aria-expanded="false" aria-controls="wellInfoTable">
     Well Info
 </button>
-    @if (Model.Annotations != null)
+    @if (Model.HwlData.Annotations != null)
 {
     <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#annotationsTable" aria-expanded="false" aria-controls="annotationsTable">
         Annotations
     </button>
 }
-    @if(Model.CasingPoints != null) {
+    @if(Model.HwlData.CasingPoints != null) {
 <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#casingpointsTable" aria-expanded="false" aria-controls="casingpointsTable">
         Casing Points
 </button>
     }
-    @if(Model.NewBits != null) {
+    @if(Model.HwlData.NewBits != null) {
 <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#newbitsTable" aria-expanded="false" aria-controls="newbitsTable">
     New Bits
 </button>
     }
-    @if(Model.LithologyLegend != null) {
+    @if(Model.HwlData.LithologyLegend != null) {
     <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#lithLegendTable" aria-expanded="false" aria-controls="lithLegendTable">
             Lithology Legend
     </button>
@@ -67,7 +67,7 @@
     Descriptions
 </button>
 
-    @if (Model.FileType == "OG")
+    @if (Model.HwlData.Type == "OG")
     {
         <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#plotScalesTable" aria-expanded="false" aria-controls="plotScalesTable">
             Plot Scales
@@ -81,10 +81,10 @@
                 <th>Value</th>
             </tr>
             @{
-                var programProperties = Model.ProgramInfo.GetType().GetProperties();
+                var programProperties = Model.HwlData.ProgramInfo.GetType().GetProperties();
                 foreach (PropertyInfo property in programProperties)
                 {
-                    object value = property.GetValue(Model.ProgramInfo);
+                    object value = property.GetValue(Model.HwlData.ProgramInfo);
                     if (value is List<string> listValue)
                     {
                         value = string.Join(", ", listValue);
@@ -105,10 +105,10 @@
                     <th>Value</th>
                 </tr>
                 @{
-                    var wellInfoProperties = Model.WellInfo.GetType().GetProperties();
+                    var wellInfoProperties = Model.HwlData.WellInfo.GetType().GetProperties();
                     foreach (PropertyInfo property in wellInfoProperties)
                     {
-                        object value = property.GetValue(Model.WellInfo);
+                        object value = property.GetValue(Model.HwlData.WellInfo);
                         if (value is List<string> listValue)
                         {
                             value = string.Join(", ", listValue);
@@ -122,7 +122,7 @@
             }
         </table>
     </div>
-    if (Model.Annotations != null)
+    if (Model.HwlData.Annotations != null)
     {
         <div class="collapse" id="annotationsTable">
             <table class="table">
@@ -130,7 +130,7 @@
                     <th>Depth</th>
                     <th>Text</th>
                 </tr>
-                @foreach (var annotation in Model.Annotations)
+                @foreach (var annotation in Model.HwlData.Annotations)
                 {
                     var fontStyle = annotation.Italic ? "italic" : "normal";
                     var textDecoration = annotation.Underline ? "underline" : "none";
@@ -145,16 +145,16 @@
             </table>
         </div>
     }
-    @if(Model.CasingPoints != null) {
+    @if(Model.HwlData.CasingPoints != null) {
     <div class="collapse" id="casingpointsTable">
         <table class="table">
             <thead>
-                @if(Model.CasingPoints.Count > 0) {
-                    @Html.Raw(Model.RenderTableHeaderProperty(Model.CasingPoints[0]))
+                @if(Model.HwlData.CasingPoints.Count > 0) {
+                    @Html.Raw(Model.RenderTableHeaderProperty(Model.HwlData.CasingPoints[0]))
                 }
             </thead>
             <tbody>
-                @foreach (var item in Model.CasingPoints)
+                @foreach (var item in Model.HwlData.CasingPoints)
                 {
                     @Html.Raw(Model.RenderTableRowProperty(item))
                 }
@@ -162,16 +162,16 @@
         </table>
     </div>
     }
-    @if(Model.NewBits != null) {
+    @if(Model.HwlData.NewBits != null) {
     <div class="collapse" id="newbitsTable">
         <table class="table">
             <thead>
-                @if(Model.NewBits.Count > 0) {
-                    @Html.Raw(Model.RenderTableHeaderProperty(Model.NewBits[0]))
+                @if(Model.HwlData.NewBits.Count > 0) {
+                    @Html.Raw(Model.RenderTableHeaderProperty(Model.HwlData.NewBits[0]))
                 }
             </thead>
             <tbody>
-                @foreach (var item in Model.NewBits)
+                @foreach (var item in Model.HwlData.NewBits)
                 {
                     @Html.Raw(Model.RenderTableRowProperty(item))
                 }
@@ -179,7 +179,7 @@
         </table>
     </div>
     }
-    @if(Model.LithologyLegend != null) {
+    @if(Model.HwlData.LithologyLegend != null) {
     <div class="collapse" id="lithLegendTable">
         <table class="table">
                 <tr>
@@ -187,7 +187,7 @@
                     <th>Lithology</th>
                 </tr>
             <tbody>
-                @foreach (var item in Model.LithologyLegend)
+                @foreach (var item in Model.HwlData.LithologyLegend)
                 {
                         <tr>
                             <td>@item.Key</td>
@@ -198,7 +198,7 @@
         </table>
     </div>
     }
-    if (Model.Descriptions != null)
+    if (Model.HwlData.Descriptions != null)
     {
         <div class="collapse" id="descriptionsTable">
             <table class="table">
@@ -206,7 +206,7 @@
                     <th>Depth</th>
                     <th>Text</th>
                 </tr>
-                @foreach (var description in Model.Descriptions)
+                @foreach (var description in Model.HwlData.Descriptions)
                 {
                     var fontStyle = description.Italic ? "italic" : "normal";
                     var textDecoration = description.Underlined ? "underline" : "none";
@@ -222,83 +222,145 @@
         </div>
     }
 
-
-
-
-    @if (Model.FileType == "OG")
+    @if (Model.HwlData.Type == "OG")
     {
         <div class="collapse" id="plotScalesTable">
             <table class="table">
                 <thead>
                     <tr>
                         <th>Depth</th>
-                        @foreach (var parameter in Model.PlottedDrillingParameters)
+                        @{
+                            int parameterIndex = 0;
+                        }
+                        @foreach (var parameter in Model.HwlData.PlotteDrillingParameters)
                         {
                             int? position = parameter.OGPlotScalePosition;
                             int? overscalePosition = parameter.OGPlotOverscalePosition;
 
                             if (position.HasValue)
                             {
-                                <th>@parameter.ShortName</th>
+                                <th data-parameter-index="@parameterIndex">@parameter.ShortName</th>
                             }
 
                             if (overscalePosition.HasValue)
                             {
-                                <th>@parameter.ShortName Ovr</th>
+                                <th data-parameter-index="@parameterIndex">@parameter.ShortName Ovr</th>
                             }
+                            parameterIndex++;
                         }
                     </tr>
                 </thead>
                 <tbody>
-                    @for (int rowIndex = 0; rowIndex < Model.PlotScales.Count; rowIndex++)
+                    @for (int rowIndex = 0; rowIndex < Model.HwlData.PlotScales.Count; rowIndex++)
                     {
-                        var plotScale = Model.PlotScales[rowIndex];
+                        var plotScale = Model.HwlData.PlotScales[rowIndex];
                         <tr>
                             <td>@plotScale[0]</td>
-                            @foreach (var parameter in Model.PlottedDrillingParameters)
+                            @{
+                                int colIndex = 1;
+                            }
+                            @foreach (var parameter in Model.HwlData.PlotteDrillingParameters)
                             {
-                                <td contenteditable="true" class="editable-cell">@parameter.PlotScales[Convert.ToDouble(@plotScale[0])]</td>
-                                <td contenteditable="true" class="editable-cell">@parameter.PlotOverscales[Convert.ToDouble(@plotScale[0])]</td>
+                                <td contenteditable="true" class="editable-cell" data-row="@rowIndex" data-col="@colIndex">@parameter.PlotScales[Convert.ToDouble(@plotScale[0])]</td>
+                                colIndex++;
+                                <td contenteditable="true" class="editable-cell" data-row="@rowIndex" data-col="@colIndex">@parameter.PlotOverscales[Convert.ToDouble(@plotScale[0])]</td>
+                                colIndex++;
                             }
                         </tr>
                     }
                 </tbody>
             </table>
         </div>
-        <button id="saveButton" type="submit">Save</button>
+        <button id="saveButton" type="submit" style="display: none;">Save</button>
         @section Scripts {
             <script>
+                // Get all editable cells
+                const editableCells = document.querySelectorAll(".editable-cell");
+
+                // Function to show the save button
+                function showSaveButton() {
+                document.getElementById("saveButton").style.display = "block";
+                }
+
+                function getEditedParameterIndex() {
+                const editedCell = document.querySelector(".editable-cell.edited");
+                if (editedCell) {
+                    const colIndex = parseInt(editedCell.getAttribute("data-col"));
+                    const header = document.querySelector(`th[data-parameter-index="${colIndex - 1}"]`);
+                    const editedParameterIndex = parseInt(header.getAttribute("data-parameter-index"));
+                    return editedParameterIndex;
+                }
+                return null;
+                }
+
+                // Add input event listeners to all editable cells and mark as edited
+                editableCells.forEach(cell => {
+                cell.addEventListener("input", function () {
+                    showSaveButton();
+                    cell.classList.add("edited");
+                });
+                });
+
                 document.getElementById("saveButton").addEventListener("click", function (e) {
-                    e.preventDefault();
-                    const plotScalesInputs = document.querySelectorAll(".editable-cell");
-                    const plotScalesData = [];
+                e.preventDefault();
+                const editedCells = [];
 
-                    plotScalesInputs.forEach(input => {
-                        const row = parseInt(input.getAttribute("data-row"));
-                        const col = parseInt(input.getAttribute("data-col"));
+                editableCells.forEach(input => {
+                    if (input.classList.contains("edited")) {
+                    const row = parseInt(input.getAttribute("data-row"));
+                    const col = parseInt(input.getAttribute("data-col"));
 
-                        if (!plotScalesData[row]) {
-                            plotScalesData[row] = [];
-                        }
+                    console.log(input);
 
-                        plotScalesData[row][col] = input.value;
+                    editedCells.push({
+                        row: row,
+                        col: col,
+                        newValue: input.innerText
                     });
+                    }
+                });
 
-                    fetch('/Index?handler=UpdatePlotScales', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
-                        },
-                        body: JSON.stringify(plotScalesData)
+                console.log(editedCells);
+
+                fetch('/Index?handler=UpdatePlotScales', {
+                    method: 'POST',
+                    headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                    },
+                    body: JSON.stringify({ editedCells: editedCells }) // Wrap editedCells in an object
                     }).then(response => {
                         if (response.ok) {
-                            alert("Data saved successfully.");
+                            return response.json();
                         } else {
                             alert("Error saving data.");
+                            throw new Error("Error saving data.");
                         }
+                    }).then(data => {
+                        if (data.success) {
+                            alert("Data saved successfully.");
+                            updateTable(editedCells); // Update the table without reloading the page
+                            console.log("Updated HwlData:", data.hwlData); // Log the updated HwlData object to the console
+                        }
+                    }).catch(error => {
+                        console.error("Error:", error);
                     });
                 });
+
+                // Function to refresh the table
+                function updateTable(editedCells) {
+                editedCells.forEach(cell => {
+                    const row = cell.row;
+                    const col = cell.col;
+                    const newValue = cell.newValue;
+
+                    const table = document.querySelector(".table");
+                    const tableRow = table.rows[row + 1]; // +1 to account for the header row
+                    const tableCell = tableRow.cells[col];
+
+                    tableCell.innerText = newValue;
+                });
+                }
             </script>
         }
     }
