@@ -1,6 +1,4 @@
 using HwlFileAnalyzer;
-using Microsoft.Extensions.DependencyInjection;
-using System;
 
 var builder = WebApplication.CreateBuilder(args);
 

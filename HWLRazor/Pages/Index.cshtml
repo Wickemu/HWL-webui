@@ -1,14 +1,16 @@
 ﻿@page
-@model HWLRazor.Pages.IndexModel
+@model IndexModel
+@using System.Reflection 
+@using System.Text.Json;
 @{
     ViewData["Title"] = "Home page";
     var fileUploaded = Model.FileUploaded;
 }
 
 
-
+<input type="hidden" id="fileContentBase64" value="@Model.FileContentBase64"/>
 <div class="text-center">
-    <img src="~/images/Horizon2016_WideWL.png" alt="Horizon Well Logging, Inc." class="img-fluid logo" />
+    <img src="~/images/Horizon2016_WideWL.png" alt="Horizon Well Logging, Inc." class="img-fluid logo"/>
     <p>Upload your HWL file to analyze it:</p>
 </div>
 
@@ -33,45 +35,53 @@
             <p>@Model.HwlData.WellInfo.Company</p>
         </div>
     </div>
-    @using System.Reflection
-    @using System.Text.Json;
-
-    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#programTable" aria-expanded="false" aria-controls="programTable">
-    Program Info
-</button>
+        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#programTable" aria-expanded="false" aria-controls="programTable">
+            Program Info
+        </button>
     <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#wellInfoTable" aria-expanded="false" aria-controls="wellInfoTable">
-    Well Info
-</button>
+        Well Info
+    </button>
     @if (Model.HwlData.Annotations != null)
-{
-    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#annotationsTable" aria-expanded="false" aria-controls="annotationsTable">
-        Annotations
-    </button>
-}
-    @if(Model.HwlData.CasingPoints != null) {
-<button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#casingpointsTable" aria-expanded="false" aria-controls="casingpointsTable">
-        Casing Points
-</button>
+    {
+        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#annotationsTable" aria-expanded="false" aria-controls="annotationsTable">
+            Annotations
+        </button>
     }
-    @if(Model.HwlData.NewBits != null) {
-<button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#newbitsTable" aria-expanded="false" aria-controls="newbitsTable">
-    New Bits
-</button>
+    @if (Model.HwlData.CasingPoints != null)
+    {
+        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#casingpointsTable" aria-expanded="false" aria-controls="casingpointsTable">
+            Casing Points
+        </button>
     }
-    @if(Model.HwlData.LithologyLegend != null) {
-    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#lithLegendTable" aria-expanded="false" aria-controls="lithLegendTable">
+    @if (Model.HwlData.NewBits != null)
+    {
+        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#newbitsTable" aria-expanded="false" aria-controls="newbitsTable">
+            New Bits
+        </button>
+    }
+    @if (Model.HwlData.LithologyLegend != null)
+    {
+        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#lithLegendTable" aria-expanded="false" aria-controls="lithLegendTable">
             Lithology Legend
-    </button>
-            }
+        </button>
+    }
     <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#descriptionsTable" aria-expanded="false" aria-controls="descriptionsTable">
-    Descriptions
-</button>
+        Descriptions
+    </button>
+    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#rawFileData" aria-expanded="false" aria-controls="rawFileData" onclick="loadRawFileContent()">
+        Show Raw Text
+    </button>
+    <div class="collapse" id="rawFileData">
+        <pre id="rawFileContent"></pre>
+    </div>
+
 
     @if (Model.HwlData.Type == "OG")
     {
         <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#plotScalesTable" aria-expanded="false" aria-controls="plotScalesTable">
             Plot Scales
-    </button>}
+        </button>
+    }
 
 
     <div class="collapse" id="programTable">
@@ -99,24 +109,24 @@
         </table>
     </div>
     <div class="collapse" id="wellInfoTable">
-            <table class="table">
-                <tr>
-                    <th>Label</th>
-                    <th>Value</th>
-                </tr>
-                @{
-                    var wellInfoProperties = Model.HwlData.WellInfo.GetType().GetProperties();
-                    foreach (PropertyInfo property in wellInfoProperties)
+        <table class="table">
+            <tr>
+                <th>Label</th>
+                <th>Value</th>
+            </tr>
+            @{
+                var wellInfoProperties = Model.HwlData.WellInfo.GetType().GetProperties();
+                foreach (PropertyInfo property in wellInfoProperties)
+                {
+                    object value = property.GetValue(Model.HwlData.WellInfo);
+                    if (value is List<string> listValue)
                     {
-                        object value = property.GetValue(Model.HwlData.WellInfo);
-                        if (value is List<string> listValue)
-                        {
-                            value = string.Join(", ", listValue);
-                        }
+                        value = string.Join(", ", listValue);
+                    }
 
-                        <tr>
-                            <td>@property.Name</td>
-                            <td>@value</td>
+                    <tr>
+                        <td>@property.Name</td>
+                        <td>@value</td>
                     </tr>
                 }
             }
@@ -137,7 +147,7 @@
                     var fontWeight = annotation.Bold ? "bold" : "normal";
                     <tr>
                         <td>@annotation.Depth</td>
-                        <td style="font-size: @annotation.FontHeight; font-family: '@annotation.Font'; font-style: @fontStyle; text-decoration: @textDecoration; color: @annotation.Color; font-weight: @fontWeight;">
+                        <td style="color: @annotation.Color; font-family: '@annotation.Font'; font-size: @annotation.FontHeight; font-style: @fontStyle; font-weight: @fontWeight; text-decoration: @textDecoration;">
                             @annotation.Text
                         </td>
                     </tr>
@@ -145,58 +155,63 @@
             </table>
         </div>
     }
-    @if(Model.HwlData.CasingPoints != null) {
-    <div class="collapse" id="casingpointsTable">
-        <table class="table">
-            <thead>
-                @if(Model.HwlData.CasingPoints.Count > 0) {
+    @if (Model.HwlData.CasingPoints != null)
+    {
+        <div class="collapse" id="casingpointsTable">
+            <table class="table">
+                <thead>
+                @if (Model.HwlData.CasingPoints.Count > 0)
+                {
                     @Html.Raw(Model.RenderTableHeaderProperty(Model.HwlData.CasingPoints[0]))
                 }
-            </thead>
-            <tbody>
+                </thead>
+                <tbody>
                 @foreach (var item in Model.HwlData.CasingPoints)
                 {
                     @Html.Raw(Model.RenderTableRowProperty(item))
                 }
-            </tbody>
-        </table>
-    </div>
+                </tbody>
+            </table>
+        </div>
     }
-    @if(Model.HwlData.NewBits != null) {
-    <div class="collapse" id="newbitsTable">
-        <table class="table">
-            <thead>
-                @if(Model.HwlData.NewBits.Count > 0) {
+    @if (Model.HwlData.NewBits != null)
+    {
+        <div class="collapse" id="newbitsTable">
+            <table class="table">
+                <thead>
+                @if (Model.HwlData.NewBits.Count > 0)
+                {
                     @Html.Raw(Model.RenderTableHeaderProperty(Model.HwlData.NewBits[0]))
                 }
-            </thead>
-            <tbody>
+                </thead>
+                <tbody>
                 @foreach (var item in Model.HwlData.NewBits)
                 {
                     @Html.Raw(Model.RenderTableRowProperty(item))
                 }
-            </tbody>
-        </table>
-    </div>
+                </tbody>
+            </table>
+        </div>
     }
-    @if(Model.HwlData.LithologyLegend != null) {
-    <div class="collapse" id="lithLegendTable">
-        <table class="table">
+    @if (Model.HwlData.LithologyLegend != null)
+    {
+        <div class="collapse" id="lithLegendTable">
+            <table class="table">
                 <tr>
                     <th>Number</th>
                     <th>Lithology</th>
                 </tr>
-            <tbody>
+                <tbody>
                 @foreach (var item in Model.HwlData.LithologyLegend)
                 {
-                        <tr>
-                            <td>@item.Key</td>
-                            <td>@item.Value</td>
-                        </tr>
+                    <tr>
+                        <td>@item.Key</td>
+                        <td>@item.Value</td>
+                    </tr>
                 }
-            </tbody>
-        </table>
-    </div>
+                </tbody>
+            </table>
+        </div>
     }
     if (Model.HwlData.Descriptions != null)
     {
@@ -213,7 +228,7 @@
                     var fontWeight = description.Bold ? "bold" : "normal";
                     <tr>
                         <td>@description.Depth</td>
-                        <td style="font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', sans-serif; font-style: @fontStyle; text-decoration: @textDecoration; color: @description.Color; font-weight: @fontWeight;">
+                        <td style="color: @description.Color; font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', sans-serif; font-style: @fontStyle; font-weight: @fontWeight; text-decoration: @textDecoration;">
                             @description.Description
                         </td>
                     </tr>
@@ -227,53 +242,53 @@
         <div class="collapse" id="plotScalesTable">
             <table class="table">
                 <thead>
+                <tr>
+                    <th>Depth</th>
+                    @{
+                        var parameterIndex = 0;
+                    }
+                    @foreach (var parameter in Model.HwlData.PlotteDrillingParameters)
+                    {
+                        var position = parameter.OGPlotScalePosition;
+                        var overscalePosition = parameter.OGPlotOverscalePosition;
+
+                        if (position.HasValue)
+                        {
+                            <th data-parameter-index="@parameterIndex">@parameter.ShortName</th>
+                        }
+
+                        if (overscalePosition.HasValue)
+                        {
+                            <th data-parameter-index="@parameterIndex">@parameter.ShortName Ovr</th>
+                        }
+                        parameterIndex++;
+                    }
+                </tr>
+                </thead>
+                <tbody>
+                @for (var rowIndex = 0; rowIndex < Model.HwlData.PlotScales.Count; rowIndex++)
+                {
+                    var plotScale = Model.HwlData.PlotScales[rowIndex];
                     <tr>
-                        <th>Depth</th>
+                        <td>@plotScale[0]</td>
                         @{
-                            int parameterIndex = 0;
+                            var colIndex = 1;
                         }
                         @foreach (var parameter in Model.HwlData.PlotteDrillingParameters)
                         {
-                            int? position = parameter.OGPlotScalePosition;
-                            int? overscalePosition = parameter.OGPlotOverscalePosition;
-
-                            if (position.HasValue)
-                            {
-                                <th data-parameter-index="@parameterIndex">@parameter.ShortName</th>
-                            }
-
-                            if (overscalePosition.HasValue)
-                            {
-                                <th data-parameter-index="@parameterIndex">@parameter.ShortName Ovr</th>
-                            }
-                            parameterIndex++;
+                            <td contenteditable="true" class="editable-cell" data-row="@rowIndex" data-col="@colIndex">@parameter.PlotScales[Convert.ToDouble(plotScale[0])]</td>
+                            colIndex++;
+                            <td contenteditable="true" class="editable-cell" data-row="@rowIndex" data-col="@colIndex">@parameter.PlotOverscales[Convert.ToDouble(plotScale[0])]</td>
+                            colIndex++;
                         }
                     </tr>
-                </thead>
-                <tbody>
-                    @for (int rowIndex = 0; rowIndex < Model.HwlData.PlotScales.Count; rowIndex++)
-                    {
-                        var plotScale = Model.HwlData.PlotScales[rowIndex];
-                        <tr>
-                            <td>@plotScale[0]</td>
-                            @{
-                                int colIndex = 1;
-                            }
-                            @foreach (var parameter in Model.HwlData.PlotteDrillingParameters)
-                            {
-                                <td contenteditable="true" class="editable-cell" data-row="@rowIndex" data-col="@colIndex">@parameter.PlotScales[Convert.ToDouble(@plotScale[0])]</td>
-                                colIndex++;
-                                <td contenteditable="true" class="editable-cell" data-row="@rowIndex" data-col="@colIndex">@parameter.PlotOverscales[Convert.ToDouble(@plotScale[0])]</td>
-                                colIndex++;
-                            }
-                        </tr>
-                    }
+                }
                 </tbody>
             </table>
         </div>
         <button id="saveButton" type="submit" style="display: none;">Save</button>
-        @section Scripts {
-            <script>
+@section Scripts {
+    <script>
                 // Get all editable cells
                 const editableCells = document.querySelectorAll(".editable-cell");
 
@@ -362,8 +377,7 @@
                 });
                 }
             </script>
-        }
-    }
+}    }
 
     var warnings = Model.TestScalesForPlottedParameters();
     <script>
@@ -379,4 +393,43 @@
     }
 </script>
 
-}
+    <script>
+    function loadRawFileContent() {
+        const rawFileContentElement = document.getElementById("rawFileContent");
+        if (!rawFileContentElement.innerText) {
+            fetch('/Index?handler=GetRawFileContent', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.text())
+            .then(rawFileContent => {
+                rawFileContentElement.innerText = rawFileContent;
+            });
+        }
+    }
+</script>
+@section Scripts {
+    <script>
+        function saveFileContentToLocalStorage() {
+            const fileContentBase64 = document.getElementById("fileContentBase64").value;
+            if (fileContentBase64) {
+                localStorage.setItem("hwlDataFileContent", fileContentBase64);
+            }
+        }
+
+        // Call the function after the page loads
+        document.addEventListener("DOMContentLoaded", function () {
+            saveFileContentToLocalStorage();
+        });
+
+    </script>
+    <script>function getFileContentFromLocalStorage() {
+    const fileContentBase64 = localStorage.getItem("hwlDataFileContent");
+    if (fileContentBase64) {
+        return atob(fileContentBase64);
+    }
+    return null;
+}</script>
+}}

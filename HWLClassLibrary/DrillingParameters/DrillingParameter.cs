@@ -1,212 +1,192 @@
-﻿namespace HwlFileAnalyzer
+﻿using System.Drawing;
+
+namespace HwlFileAnalyzer;
+
+public abstract class DrillingParameter
 {
-    using System.Collections.Generic;
-    using System.Drawing;
-    using System.Linq;
+    protected Dictionary<double, int> data;
 
-    public abstract class DrillingParameter
+    protected HwlData hwl;
+
+    protected bool plotEnabled;
+
+    public DrillingParameter(HwlData hwlData)
     {
-        public DrillingParameter(HwlData hwlData)
+        hwl = hwlData;
+        if (PlotLinePosition.HasValue)
         {
-            hwl = hwlData;
-            if (PlotLinePosition.HasValue)
-            {
-                SetPlotData();
-                if (Data.Values.Any(i => i != 0)) PlotEnabled = true;
-                else plotEnabled = false;
-            }
-
-            if (hwl.Type == "OG" && OGPlotScalePosition.HasValue) PlotScales = SetPlotScales();
-            if (hwl.Type == "OG" && OGPlotOverscalePosition.HasValue) PlotOverscales = SetPlotOverscales();
-
-            if (ColorPosition.HasValue) Color = ColorTranslator.FromWin32(hwl.Colors[ColorPosition.Value]);
-
-            if (DisplayNamePosition.HasValue) DisplayName = hwl.DisplayNames[DisplayNamePosition.Value];
-            else DisplayName = GetType().Name;
-
-            if (LineStylePosition.HasValue) LineStyle = int.Parse(hwl.LineStyles[LineStylePosition.Value]);
-            else LineStyle = 0;
-
-
+            SetPlotData();
+            if (Data.Values.Any(i => i != 0)) PlotEnabled = true;
+            else plotEnabled = false;
         }
 
-        protected HwlData hwl;
+        if (hwl.Type == "OG" && OGPlotScalePosition.HasValue) PlotScales = SetPlotScales();
+        if (hwl.Type == "OG" && OGPlotOverscalePosition.HasValue) PlotOverscales = SetPlotOverscales();
 
-        protected Dictionary<double, int> data;
+        if (ColorPosition.HasValue) Color = ColorTranslator.FromWin32(hwl.Colors[ColorPosition.Value]);
 
-        protected virtual int? OGColorPosition { get; }
-        protected virtual int? GeoColorPosition { get; }
-        public int? ColorPosition => hwl.Type == "OG" ? OGColorPosition : GeoColorPosition;
-        public Color Color { get; set; } = Color.Black;
+        if (DisplayNamePosition.HasValue) DisplayName = hwl.DisplayNames[DisplayNamePosition.Value];
+        else DisplayName = GetType().Name;
 
-        protected virtual int? OGColorOverscalePosition { get; }
-        protected virtual int? GeoColorOverscalePosition { get; }
-        public int? ColorOverscalePosition => hwl.Type == "OG" ? OGColorOverscalePosition : GeoColorOverscalePosition;
+        if (LineStylePosition.HasValue) LineStyle = int.Parse(hwl.LineStyles[LineStylePosition.Value]);
+        else LineStyle = 0;
+    }
 
-        protected virtual int? OGDisplayNamePosition { get; }
-        protected virtual int? GeoDisplayNamePosition { get; }
-        public int? DisplayNamePosition => hwl.Type == "OG" ? OGDisplayNamePosition : GeoDisplayNamePosition;
-        public string DisplayName { get; set; }
+    protected virtual int? OGColorPosition { get; }
+    protected virtual int? GeoColorPosition { get; }
+    public int? ColorPosition => hwl.Type == "OG" ? OGColorPosition : GeoColorPosition;
+    public Color Color { get; set; } = Color.Black;
 
-        protected virtual int? OGDisplayNameOverscalePosition { get; }
-        public int? DisplayNameOverscale { get; }
+    protected virtual int? OGColorOverscalePosition { get; }
+    protected virtual int? GeoColorOverscalePosition { get; }
+    public int? ColorOverscalePosition => hwl.Type == "OG" ? OGColorOverscalePosition : GeoColorOverscalePosition;
 
-        protected virtual int? OGLineStylesPosition { get; }
-        protected virtual int? GeoLineStylesPosition { get; }
-        public int? LineStylePosition => hwl.Type == "OG" ? OGLineStylesPosition : GeoLineStylesPosition;
-        public int LineStyle { get; set; } = 0;
+    protected virtual int? OGDisplayNamePosition { get; }
+    protected virtual int? GeoDisplayNamePosition { get; }
+    public int? DisplayNamePosition => hwl.Type == "OG" ? OGDisplayNamePosition : GeoDisplayNamePosition;
+    public string DisplayName { get; set; }
 
-        protected virtual int? OGHeaderScalePosition { get; }
-        protected virtual int? GeoHeaderScalePosition { get; }
-        public int? HeaderScalePosition => hwl.Type == "OG" ? OGHeaderScalePosition : GeoHeaderScalePosition;
-        public int? HeaderScale { get; set; }
+    protected virtual int? OGDisplayNameOverscalePosition { get; }
+    public int? DisplayNameOverscale { get; }
 
-        protected virtual int? OGHeaderOverscalePosition { get; }
-        protected virtual int? GeoHeaderOverscalePosition { get; }
-        public int? HeaderOverscalePosition => hwl.Type == "OG" ? OGHeaderOverscalePosition : GeoHeaderOverscalePosition;
-        public int? HeaderOverscale { get; set; }
+    protected virtual int? OGLineStylesPosition { get; }
+    protected virtual int? GeoLineStylesPosition { get; }
+    public int? LineStylePosition => hwl.Type == "OG" ? OGLineStylesPosition : GeoLineStylesPosition;
+    public int LineStyle { get; set; }
 
-        protected virtual int? GeoPlotLinePosition { get; }
-        protected virtual int? OGPlotLinePosition { get; }
-        public int? PlotLinePosition => hwl.Type == "OG" ? OGPlotLinePosition : GeoPlotLinePosition;
+    protected virtual int? OGHeaderScalePosition { get; }
+    protected virtual int? GeoHeaderScalePosition { get; }
+    public int? HeaderScalePosition => hwl.Type == "OG" ? OGHeaderScalePosition : GeoHeaderScalePosition;
+    public int? HeaderScale { get; set; }
 
-        public virtual int? OGPlotScalePosition { get; }
-        public Dictionary<double, int> PlotScales { get; private set; }
+    protected virtual int? OGHeaderOverscalePosition { get; }
+    protected virtual int? GeoHeaderOverscalePosition { get; }
+    public int? HeaderOverscalePosition => hwl.Type == "OG" ? OGHeaderOverscalePosition : GeoHeaderOverscalePosition;
+    public int? HeaderOverscale { get; set; }
 
-        public virtual int? OGPlotOverscalePosition { get; }
-        public Dictionary<double, int> PlotOverscales { get; private set; }
+    protected virtual int? GeoPlotLinePosition { get; }
+    protected virtual int? OGPlotLinePosition { get; }
+    public int? PlotLinePosition => hwl.Type == "OG" ? OGPlotLinePosition : GeoPlotLinePosition;
 
-        //public bool HasData
-        //{
-        //    get
-        //    {
-        //        if (data != null && data.Exists(i => i != 0))
-        //        {
-        //            return true;
-        //        }
-        //        else
-        //        {
-        //            return false;
-        //        }
-        //    }
-        //}
+    public virtual int? OGPlotScalePosition { get; }
+    public Dictionary<double, int> PlotScales { get; }
 
-        protected bool plotEnabled;
-        public virtual bool PlotEnabled { get => plotEnabled; set => plotEnabled = value; }
-        public virtual Dictionary<double, int> Data { get => data; private set => data = value; }
+    public virtual int? OGPlotOverscalePosition { get; }
+    public Dictionary<double, int> PlotOverscales { get; }
 
-        public virtual string ShortName { get; }
+    public virtual bool PlotEnabled
+    {
+        get => plotEnabled;
+        set => plotEnabled = value;
+    }
 
-        public virtual string UnitOfMeasurement { get => "Units"; }
+    public virtual Dictionary<double, int> Data
+    {
+        get => data;
+        private set => data = value;
+    }
 
-        protected virtual bool HasUniqueParser { get => false; }
+    public virtual string ShortName { get; }
 
-        public virtual int Column { get; set; } = 7;
+    public virtual string UnitOfMeasurement => "Units";
 
-        public virtual bool InvertedScale { get; set; }
+    protected virtual bool HasUniqueParser => false;
 
-        public List<int> GetPlotData()
-        {
-            List<int> plot = new List<int>();
-            foreach (var item in hwl.DrillingParameterData)
-            {
-                plot.Add(int.Parse(item[PlotLinePosition.Value]));
-            }
+    public virtual int Column { get; set; } = 7;
 
-            return plot;
-        }
+    public virtual bool InvertedScale { get; set; }
 
-        private Dictionary<double, int> SetPlotScales()
-        {
-            var dict = new Dictionary<double, int>();
-            foreach (var item in hwl.PlotScales)
-            {
-                dict.Add(double.Parse(item[0]), int.Parse(item[OGPlotScalePosition.Value]));
-            }
+    public List<int> GetPlotData()
+    {
+        var plot = new List<int>();
+        foreach (var item in hwl.DrillingParameterData) plot.Add(int.Parse(item[PlotLinePosition.Value]));
 
-            return dict;
-        }
+        return plot;
+    }
 
-        protected virtual void SetPlotData()
-        {
-            if (data is null) data = new Dictionary<double, int>();
-            else data.Clear();
-            foreach (var item in hwl.DrillingParameterData)
-            {
-                if (string.IsNullOrEmpty(item[PlotLinePosition.Value])) continue;
-                else data.Add(double.Parse(item[0]), int.Parse(item[PlotLinePosition.Value]));
-            }
-        }
+    private Dictionary<double, int> SetPlotScales()
+    {
+        var dict = new Dictionary<double, int>();
+        foreach (var item in hwl.PlotScales)
+            dict.Add(double.Parse(item[0]), int.Parse(item[OGPlotScalePosition.Value]));
 
-        private Dictionary<double, int> SetPlotOverscales()
-        {
-            var dict = new Dictionary<double, int>();
-            foreach (var item in hwl.PlotScales)
-            {
-                dict.Add(double.Parse(item[0]), int.Parse(item[OGPlotOverscalePosition.Value]));
-            }
+        return dict;
+    }
 
-            return dict;
-        }
+    protected virtual void SetPlotData()
+    {
+        if (data is null) data = new Dictionary<double, int>();
+        else data.Clear();
+        foreach (var item in hwl.DrillingParameterData)
+            if (string.IsNullOrEmpty(item[PlotLinePosition.Value])) continue;
+            else data.Add(double.Parse(item[0]), int.Parse(item[PlotLinePosition.Value]));
+    }
 
-        public List<string> TestScales()
-        {
-            List<string> warnings = new List<string>();
-            int issueCount = 0;
-            if (hwl.Type == "OG" && plotEnabled)
-            {
-                if (PlotScales.Count == PlotOverscales.Count)
-                { // Require equal count.
-                    foreach (var pair in PlotScales)
+    private Dictionary<double, int> SetPlotOverscales()
+    {
+        var dict = new Dictionary<double, int>();
+        foreach (var item in hwl.PlotScales)
+            dict.Add(double.Parse(item[0]), int.Parse(item[OGPlotOverscalePosition.Value]));
+
+        return dict;
+    }
+
+    public List<string> TestScales()
+    {
+        var warnings = new List<string>();
+        var issueCount = 0;
+        if (hwl.Type == "OG" && plotEnabled)
+            if (PlotScales.Count == PlotOverscales.Count)
+                // Require equal count.
+                foreach (var pair in PlotScales)
+                {
+                    int overvalue;
+                    if (PlotOverscales.TryGetValue(pair.Key, out overvalue))
                     {
-                        int overvalue;
-                        if (PlotOverscales.TryGetValue(pair.Key, out overvalue))
+                        if (pair.Value <= 0)
                         {
-                            if (pair.Value <= 0)
-                            {
-                                issueCount += 1;
-                                warnings.Add($"Warning: segment scale at depth {pair.Key} for field {this.DisplayName}; Scale value is {pair.Value} which should be greater than 0.");
-                            }
-                            else if (overvalue <= pair.Value)
-                            {
-                                issueCount += 1;
-                                warnings.Add($"Warning: segment scale at depth {pair.Key} for field {this.DisplayName}; Scale value is {pair.Value} while Overscale value is {overvalue}.");
-                            }
+                            issueCount += 1;
+                            warnings.Add(
+                                $"Warning: segment scale at depth {pair.Key} for field {DisplayName}; Scale value is {pair.Value} which should be greater than 0.");
+                        }
+                        else if (overvalue <= pair.Value)
+                        {
+                            issueCount += 1;
+                            warnings.Add(
+                                $"Warning: segment scale at depth {pair.Key} for field {DisplayName}; Scale value is {pair.Value} while Overscale value is {overvalue}.");
                         }
                     }
                 }
+
+        if (hwl.Type == "Geo" && plotEnabled)
+        {
+            if (HeaderOverscale.HasValue && HeaderOverscale <= HeaderScale)
+            {
+                issueCount += 1;
+                warnings.Add(
+                    $"Warning: Header overscale for {DisplayName} is set to {HeaderOverscale} when it should be set above {HeaderScale}.");
             }
 
-            if (hwl.Type == "Geo" && plotEnabled)
-            {
-
-                if (HeaderOverscale.HasValue && HeaderOverscale <= HeaderScale)
+            if (HeaderScale.HasValue)
+                if (HeaderScale <= 0)
                 {
                     issueCount += 1;
-                    warnings.Add($"Warning: Header overscale for {DisplayName} is set to {HeaderOverscale} when it should be set above {HeaderScale}.");
+                    warnings.Add(
+                        $"Warning: header scale for field {DisplayName}; Scale value is {HeaderScale} which is less than or below 0.");
                 }
-                if (HeaderScale.HasValue)
-                {
-                    if (HeaderScale <= 0)
-                    {
-                        issueCount += 1;
-                        warnings.Add($"Warning: header scale for field {this.DisplayName}; Scale value is {HeaderScale} which is less than or below 0.");
-                    }
-                }
-            }
-
-            return warnings;
         }
 
-        //public bool ScaleSelfTest()
-        //{
-        //    if(HasPlotOverscale == true && HasPlotScale == true)
-        //    {
-        //        foreach (var item in PlotScales)
-        //        {
-        //            if (item.Value[OGPlotOverscalePosition] >= item.Value[OGPlotScalePosition]) return false;
-        //        }
-        //    }
-        //}
+        return warnings;
     }
+
+    //public bool ScaleSelfTest()
+    //{
+    //    if(HasPlotOverscale == true && HasPlotScale == true)
+    //    {
+    //        foreach (var item in PlotScales)
+    //        {
+    //            if (item.Value[OGPlotOverscalePosition] >= item.Value[OGPlotScalePosition]) return false;
+    //        }
+    //    }
+    //}
 }

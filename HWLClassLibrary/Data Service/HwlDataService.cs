@@ -9,5 +9,6 @@ namespace HwlFileAnalyzer
     public class HwlDataService : IHwlDataService
     {
         public HwlData HwlData { get; set; }
+        public string FileContent { get; set; }
     }
 }
