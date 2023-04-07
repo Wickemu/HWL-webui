@@ -3,15 +3,12 @@ using HwlFileAnalyzer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Newtonsoft.Json;
-//using System.Text.Json;
-
 
 namespace HWLRazor.Pages;
 
 public class IndexModel : PageModel
 {
     private readonly IHwlDataService _hwlDataService;
-
     private readonly ILogger<IndexModel> _logger;
 
     public IndexModel(ILogger<IndexModel> logger, IHwlDataService hwlDataService)
@@ -20,14 +17,20 @@ public class IndexModel : PageModel
         _hwlDataService = hwlDataService;
     }
 
-
     [BindProperty] public IFormFile UploadedFile { get; set; }
 
     public string Message { get; private set; }
     public bool WellInfoInitialized { get; set; } = false;
     public bool FileUploaded { get; private set; }
-    private Importer Importer { get; set; }
+
+    public Importer Importer
+    {
+        get => _hwlDataService.Importer;
+        set => _hwlDataService.Importer = value;
+    }
+
     public string FileContentBase64 { get; set; }
+    public string Filename { get; set; }
 
     public HwlData HwlData
     {
@@ -57,16 +60,14 @@ public class IndexModel : PageModel
             await UploadedFile.CopyToAsync(stream);
         }
 
+        Filename = Path.GetFileName(filePath);
         _hwlDataService.FileContent = await System.IO.File.ReadAllTextAsync(filePath);
         FileContentBase64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(_hwlDataService.FileContent));
 
-        // Now the file is saved, you can use the Importer class
-        Importer = new Importer(filePath);
-        var hwlData = Importer.ImportHWL();
-        HttpContext.Session.SetString("HwlData", JsonConvert.SerializeObject(hwlData));
+        _hwlDataService.Importer = new Importer(filePath);
+        _hwlDataService.HwlData = Importer.ImportHWL();
+        HttpContext.Session.SetString("HwlData", JsonConvert.SerializeObject(HwlData));
         FileUploaded = true;
-        // You can now use the hwlData variable as you wish
-        _hwlDataService.HwlData = hwlData;
         _logger.LogInformation($"HwlData: {HwlData}");
 
         // Cleanup the temporary file
@@ -141,7 +142,6 @@ public class IndexModel : PageModel
         return new JsonResult(new { success = true, hwlData = HwlData });
     }
 
-
     public string RenderTableHeader(object item)
     {
         var properties = item.GetType().GetProperties();
@@ -199,6 +199,26 @@ public class IndexModel : PageModel
     {
         return Content(_hwlDataService.FileContent, "text/plain", Encoding.UTF8);
     }
+
+    // Export saved data to HWL file
+    public IActionResult OnPostExportData()
+    {
+        if (Importer.RawText == null || Importer.TOC.OGPlotScales == null || HwlData.PlotScales == null)
+            return BadRequest();
+
+        var i = 0;
+        foreach (var index in Importer.TOC.OGPlotScales)
+        {
+            Importer.RawText[index] = Importer.UnparseOGPlotScales(HwlData.PlotScales[i]);
+            i++;
+        }
+
+        // Combine the lines in Importer.RawText into a single string
+        var exportedData = string.Join(Environment.NewLine, Importer.RawText);
+
+        return new JsonResult(new { success = true, exportedData });
+    }
+
 
     public class EditedCell
     {

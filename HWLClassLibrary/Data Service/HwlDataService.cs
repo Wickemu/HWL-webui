@@ -10,5 +10,6 @@ namespace HwlFileAnalyzer
     {
         public HwlData HwlData { get; set; }
         public string FileContent { get; set; }
+        public Importer Importer { get; set; }
     }
 }

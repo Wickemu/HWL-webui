@@ -411,13 +411,4 @@ public class Importer
         var wellInfo = new WellInfo(splitLine);
         return wellInfo;
     }
-
-    //public void importDPData(DrillingParameter dp)
-    //{
-    //    dp.Color = Hwl.Colors[dp.ColorPosition];
-    //    dp.DisplayName = Hwl.DisplayNames[dp.DisplayNamePosition];
-    //    dp.LineStyle = Hwl.LineStyles[dp.LineStylePosition];
-    //    if (dp.HasHeaderScale == true) dp.HeaderScale = Hwl.HeaderScales[dp.HeaderScalePosition];
-    //    if (dp.HasHeaderOverscale == true) dp.HeaderOverscale = Hwl.HeaderScales[dp.HeaderOverscalePosition];
-    //}
 }

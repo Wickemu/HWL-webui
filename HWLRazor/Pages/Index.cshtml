@@ -1,7 +1,6 @@
 ﻿@page
+@using System.Text.Json
 @model IndexModel
-@using System.Reflection 
-@using System.Text.Json;
 @{
     ViewData["Title"] = "Home page";
     var fileUploaded = Model.FileUploaded;
@@ -35,9 +34,10 @@
             <p>@Model.HwlData.WellInfo.Company</p>
         </div>
     </div>
-        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#programTable" aria-expanded="false" aria-controls="programTable">
-            Program Info
-        </button>
+
+    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#programTable" aria-expanded="false" aria-controls="programTable">
+        Program Info
+    </button>
     <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#wellInfoTable" aria-expanded="false" aria-controls="wellInfoTable">
         Well Info
     </button>
@@ -71,18 +71,15 @@
     <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#rawFileData" aria-expanded="false" aria-controls="rawFileData" onclick="loadRawFileContent()">
         Show Raw Text
     </button>
-    <div class="collapse" id="rawFileData">
-        <pre id="rawFileContent"></pre>
-    </div>
-
-
     @if (Model.HwlData.Type == "OG")
     {
         <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#plotScalesTable" aria-expanded="false" aria-controls="plotScalesTable">
             Plot Scales
         </button>
     }
-
+    <div class="collapse" id="rawFileData">
+        <pre id="rawFileContent"></pre>
+    </div>
 
     <div class="collapse" id="programTable">
         <table class="table">
@@ -92,9 +89,9 @@
             </tr>
             @{
                 var programProperties = Model.HwlData.ProgramInfo.GetType().GetProperties();
-                foreach (PropertyInfo property in programProperties)
+                foreach (var property in programProperties)
                 {
-                    object value = property.GetValue(Model.HwlData.ProgramInfo);
+                    var value = property.GetValue(Model.HwlData.ProgramInfo);
                     if (value is List<string> listValue)
                     {
                         value = string.Join(", ", listValue);
@@ -116,9 +113,9 @@
             </tr>
             @{
                 var wellInfoProperties = Model.HwlData.WellInfo.GetType().GetProperties();
-                foreach (PropertyInfo property in wellInfoProperties)
+                foreach (var property in wellInfoProperties)
                 {
-                    object value = property.GetValue(Model.HwlData.WellInfo);
+                    var value = property.GetValue(Model.HwlData.WellInfo);
                     if (value is List<string> listValue)
                     {
                         value = string.Join(", ", listValue);
@@ -236,7 +233,6 @@
             </table>
         </div>
     }
-
     @if (Model.HwlData.Type == "OG")
     {
         <div class="collapse" id="plotScalesTable">
@@ -287,113 +283,22 @@
             </table>
         </div>
         <button id="saveButton" type="submit" style="display: none;">Save</button>
-@section Scripts {
-    <script>
-                // Get all editable cells
-                const editableCells = document.querySelectorAll(".editable-cell");
+    }
+    <button id="exportButton" type="submit" style="display: none;">Export</button>
 
-                // Function to show the save button
-                function showSaveButton() {
-                document.getElementById("saveButton").style.display = "block";
-                }
-
-                function getEditedParameterIndex() {
-                const editedCell = document.querySelector(".editable-cell.edited");
-                if (editedCell) {
-                    const colIndex = parseInt(editedCell.getAttribute("data-col"));
-                    const header = document.querySelector(`th[data-parameter-index="${colIndex - 1}"]`);
-                    const editedParameterIndex = parseInt(header.getAttribute("data-parameter-index"));
-                    return editedParameterIndex;
-                }
-                return null;
-                }
-
-                // Add input event listeners to all editable cells and mark as edited
-                editableCells.forEach(cell => {
-                cell.addEventListener("input", function () {
-                    showSaveButton();
-                    cell.classList.add("edited");
-                });
-                });
-
-                document.getElementById("saveButton").addEventListener("click", function (e) {
-                e.preventDefault();
-                const editedCells = [];
-
-                editableCells.forEach(input => {
-                    if (input.classList.contains("edited")) {
-                    const row = parseInt(input.getAttribute("data-row"));
-                    const col = parseInt(input.getAttribute("data-col"));
-
-                    console.log(input);
-
-                    editedCells.push({
-                        row: row,
-                        col: col,
-                        newValue: input.innerText
-                    });
-                    }
-                });
-
-                console.log(editedCells);
-
-                fetch('/Index?handler=UpdatePlotScales', {
-                    method: 'POST',
-                    headers: {
-                    'Content-Type': 'application/json',
-                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
-                    },
-                    body: JSON.stringify({ editedCells: editedCells }) // Wrap editedCells in an object
-                    }).then(response => {
-                        if (response.ok) {
-                            return response.json();
-                        } else {
-                            alert("Error saving data.");
-                            throw new Error("Error saving data.");
-                        }
-                    }).then(data => {
-                        if (data.success) {
-                            alert("Data saved successfully.");
-                            updateTable(editedCells); // Update the table without reloading the page
-                            console.log("Updated HwlData:", data.hwlData); // Log the updated HwlData object to the console
-                        }
-                    }).catch(error => {
-                        console.error("Error:", error);
-                    });
-                });
-
-                // Function to refresh the table
-                function updateTable(editedCells) {
-                editedCells.forEach(cell => {
-                    const row = cell.row;
-                    const col = cell.col;
-                    const newValue = cell.newValue;
-
-                    const table = document.querySelector(".table");
-                    const tableRow = table.rows[row + 1]; // +1 to account for the header row
-                    const tableCell = tableRow.cells[col];
-
-                    tableCell.innerText = newValue;
-                });
-                }
-            </script>
-}    }
 
     var warnings = Model.TestScalesForPlottedParameters();
+
+@section Scripts {
     <script>
-    @{
-        var serializedWarnings = JsonSerializer.Serialize(warnings);
-    }
+    @{ var serializedWarnings = JsonSerializer.Serialize(warnings); }
     let warnings = JSON.parse('@Html.Raw(serializedWarnings)');
     console.log("Warnings:", warnings); // Log the warnings to the console
-
     if (warnings.length > 0) {
         let allWarnings = warnings.join('\n');
         alert(allWarnings);
     }
-</script>
 
-    <script>
     function loadRawFileContent() {
         const rawFileContentElement = document.getElementById("rawFileContent");
         if (!rawFileContentElement.innerText) {
@@ -409,27 +314,156 @@
             });
         }
     }
-</script>
-@section Scripts {
-    <script>
-        function saveFileContentToLocalStorage() {
-            const fileContentBase64 = document.getElementById("fileContentBase64").value;
-            if (fileContentBase64) {
-                localStorage.setItem("hwlDataFileContent", fileContentBase64);
-            }
-        }
 
-        // Call the function after the page loads
-        document.addEventListener("DOMContentLoaded", function () {
-            saveFileContentToLocalStorage();
-        });
+    // Get all editable cells
+    const editableCells = document.querySelectorAll(".editable-cell");
 
-    </script>
-    <script>function getFileContentFromLocalStorage() {
-    const fileContentBase64 = localStorage.getItem("hwlDataFileContent");
-    if (fileContentBase64) {
-        return atob(fileContentBase64);
+    // Function to show the save button
+    function showSaveButton() {
+    document.getElementById("saveButton").style.display = "block";
+    }
+    
+    // Function to show the export button
+    function showExportButton() {
+    document.getElementById("exportButton").style.display = "block";
+    }
+
+    function getEditedParameterIndex() {
+    const editedCell = document.querySelector(".editable-cell.edited");
+    if (editedCell) {
+        const colIndex = parseInt(editedCell.getAttribute("data-col"));
+        const header = document.querySelector(`th[data-parameter-index="${colIndex - 1}"]`);
+        const editedParameterIndex = parseInt(header.getAttribute("data-parameter-index"));
+        return editedParameterIndex;
     }
     return null;
-}</script>
+    }
+
+    // Add input event listeners to all editable cells and mark as edited
+    editableCells.forEach(cell => {
+    cell.addEventListener("input", function () {
+        showSaveButton();
+        cell.classList.add("edited");
+    });
+    });
+    
+    //Function to export the saved changes to a new hwl file
+    document.getElementById("exportButton").addEventListener("click", function (e) {
+        e.preventDefault();
+        
+        fetch('/Index?handler=ExportData', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+            }
+        }).then(response => {
+            if (response.ok) {
+                return response.json();
+            } else {
+                alert("Error exporting data.");
+                throw new Error("Error exporting data.");
+            }
+        }).then(data => {
+            if (data.success) {
+                const exportedData = data.exportedData;
+                // Save the exported data as a file with the .hwl extension
+                saveAsFile(exportedData, "exported_data.hwl");
+            }
+        }).catch(error => {
+            console.error("Error:", error);
+        });
+    });
+
+    function saveAsFile(text, filename) {
+        const blob = new Blob([text], {type: "text/plain;charset=utf-8"});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(url);
+    }
+    
+    // Function to save PlotScale table changes to HwlData
+    document.getElementById("saveButton").addEventListener("click", function (e) {
+        e.preventDefault();
+        const editedCells = [];
+
+        editableCells.forEach(input => {
+            if (input.classList.contains("edited")) {
+            const row = parseInt(input.getAttribute("data-row"));
+            const col = parseInt(input.getAttribute("data-col"));
+
+            editedCells.push({
+                row: row,
+                col: col,
+                newValue: input.innerText
+            });
+            }
+        });
+
+        fetch('/Index?handler=UpdatePlotScales', {
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/json',
+            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+            },
+            body: JSON.stringify({ editedCells: editedCells }) // Wrap editedCells in an object
+        }).then(response => {
+            if (response.ok) {
+                return response.json();
+            } else {
+                alert("Error saving data.");
+                throw new Error("Error saving data.");
+            }
+        }).then(data => {
+            if (data.success) {
+                alert("Data saved successfully.");
+                updateTable(editedCells); // Update the table without reloading the page
+                console.log("Updated HwlData:", data.hwlData); // Log the updated HwlData object to the console
+                showExportButton();
+            }
+        }).catch(error => {
+            console.error("Error:", error);
+        });
+        console.log("Sending EditedCellsWrapper:", { editedCells: editedCells }); // Add this line
+    });
+
+    // Function to refresh the table
+    function updateTable(editedCells) {
+    editedCells.forEach(cell => {
+        const row = cell.row;
+        const col = cell.col;
+        const newValue = cell.newValue;
+
+        const table = document.querySelector(".table");
+        const tableRow = table.rows[row + 1]; // +1 to account for the header row
+        const tableCell = tableRow.cells[col];
+
+        tableCell.innerText = newValue;
+    });
+    }
+
+    function saveFileContentToLocalStorage() {
+        const fileContentBase64 = document.getElementById("fileContentBase64").value;
+        if (fileContentBase64) {
+            localStorage.setItem("hwlDataFileContent", fileContentBase64);
+        }
+    }
+
+    // Call the function after the page loads
+    document.addEventListener("DOMContentLoaded", function () {
+        saveFileContentToLocalStorage();
+    });
+
+    function getFileContentFromLocalStorage() {
+            const fileContentBase64 = localStorage.getItem("hwlDataFileContent");
+            if (fileContentBase64) {
+                return atob(fileContentBase64);
+            }
+            return null;
+        }
+
+</script>
 }}
