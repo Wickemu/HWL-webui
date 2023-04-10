@@ -35,7 +35,7 @@
         public List<DrillingParameter> DrillingParameters { get; set; }
 
         private List<DrillingParameter> plottedDrillingParameters;
-        public List<DrillingParameter> PlotteDrillingParameters
+        public List<DrillingParameter> PlottedDrillingParameters
         {
             get
             {

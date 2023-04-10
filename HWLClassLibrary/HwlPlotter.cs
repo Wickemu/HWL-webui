@@ -243,7 +243,7 @@ namespace HwlFileAnalyzer
             Columns.Add(1, new DepthColumn(hwl));
             Columns.Add(2, new LithologyColumn(hwl));
             Columns.Add(6, new DescriptionColumn(hwl));
-            var plotty = hwl.PlotteDrillingParameters.ToList();
+            var plotty = hwl.PlottedDrillingParameters.ToList();
 
             for (int i = 0; i < NumofColumns; i++)
             {
@@ -257,7 +257,7 @@ namespace HwlFileAnalyzer
                         || item.GetType() == typeof(Torque)) continue;
                     if (item.Column == i)
                     {
-                        //if (Columns.ContainsKey(i)) col.Fields.Add(hwl.PlotteDrillingParameters[i]);
+                        //if (Columns.ContainsKey(i)) col.Fields.Add(hwl.PlottedDrillingParameters[i]);
                         col.AddParameter(item);
                     }
 

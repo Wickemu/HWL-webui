@@ -8,6 +8,8 @@
         public override int Column => 7;
         public override string ShortName => "TempIn";
         public override string UnitOfMeasurement => "Degrees F";
+        protected override int? GeoHeaderScalePosition => 25;
+        protected override int? GeoHeaderOverscalePosition => 26;
         protected override int? GeoColorPosition => 5;
         protected override int? GeoDisplayNamePosition => 23;
         protected override int? GeoLineStylesPosition => 7;

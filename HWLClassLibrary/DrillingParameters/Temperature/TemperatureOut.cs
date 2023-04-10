@@ -11,6 +11,8 @@
         protected override int? GeoColorPosition => 6;
         protected override int? GeoDisplayNamePosition => 24;
         protected override int? GeoLineStylesPosition => 8;
+        protected override int? GeoHeaderScalePosition => 27;
+        protected override int? GeoHeaderOverscalePosition => 28;
         protected override int? GeoPlotLinePosition => 13;
         public override bool PlotEnabled => true;
     }

@@ -2,7 +2,7 @@
 @using System.Text.Json
 @model IndexModel
 @{
-    ViewData["Title"] = "Home page";
+    ViewData["Title"] = "HWL Sanitizer";
     var fileUploaded = Model.FileUploaded;
 }
 
@@ -10,7 +10,7 @@
 <input type="hidden" id="fileContentBase64" value="@Model.FileContentBase64"/>
 <div class="text-center">
     <img src="~/images/Horizon2016_WideWL.png" alt="Horizon Well Logging, Inc." class="img-fluid logo"/>
-    <p>Upload your HWL file to analyze it:</p>
+    <p>Upload your HWL file:</p>
 </div>
 
 <div class="row">
@@ -68,18 +68,17 @@
     <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#descriptionsTable" aria-expanded="false" aria-controls="descriptionsTable">
         Descriptions
     </button>
-    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#rawFileData" aria-expanded="false" aria-controls="rawFileData" onclick="loadRawFileContent()">
-        Show Raw Text
-    </button>
     @if (Model.HwlData.Type == "OG")
     {
         <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#plotScalesTable" aria-expanded="false" aria-controls="plotScalesTable">
             Plot Scales
         </button>
     }
-    <div class="collapse" id="rawFileData">
-        <pre id="rawFileContent"></pre>
-    </div>
+    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#rawFileData" aria-expanded="false" aria-controls="rawFileData" onclick="loadRawFileContent()">
+        Show Raw Text
+    </button>
+    <button id="saveButton" type="submit" style="display: none;">Save</button>
+    <button id="exportButton" type="submit" style="display: none;">Export</button>
 
     <div class="collapse" id="programTable">
         <table class="table">
@@ -129,7 +128,7 @@
             }
         </table>
     </div>
-    if (Model.HwlData.Annotations != null)
+    @if (Model.HwlData.Annotations != null)
     {
         <div class="collapse" id="annotationsTable">
             <table class="table">
@@ -210,7 +209,7 @@
             </table>
         </div>
     }
-    if (Model.HwlData.Descriptions != null)
+    @if (Model.HwlData.Descriptions != null)
     {
         <div class="collapse" id="descriptionsTable">
             <table class="table">
@@ -243,19 +242,19 @@
                     @{
                         var parameterIndex = 0;
                     }
-                    @foreach (var parameter in Model.HwlData.PlotteDrillingParameters)
+                    @foreach (var parameter in Model.HwlData.PlottedDrillingParameters)
                     {
                         var position = parameter.OGPlotScalePosition;
                         var overscalePosition = parameter.OGPlotOverscalePosition;
 
                         if (position.HasValue)
                         {
-                            <th data-parameter-index="@parameterIndex">@parameter.ShortName</th>
+                            <th data-parameter-index="@parameterIndex">@parameter.DisplayName</th>
                         }
 
                         if (overscalePosition.HasValue)
                         {
-                            <th data-parameter-index="@parameterIndex">@parameter.ShortName Ovr</th>
+                            <th data-parameter-index="@parameterIndex">@parameter.DisplayName Ovr</th>
                         }
                         parameterIndex++;
                     }
@@ -270,7 +269,7 @@
                         @{
                             var colIndex = 1;
                         }
-                        @foreach (var parameter in Model.HwlData.PlotteDrillingParameters)
+                        @foreach (var parameter in Model.HwlData.PlottedDrillingParameters)
                         {
                             <td contenteditable="true" class="editable-cell" data-row="@rowIndex" data-col="@colIndex">@parameter.PlotScales[Convert.ToDouble(plotScale[0])]</td>
                             colIndex++;
@@ -282,12 +281,72 @@
                 </tbody>
             </table>
         </div>
-        <button id="saveButton" type="submit" style="display: none;">Save</button>
     }
-    <button id="exportButton" type="submit" style="display: none;">Export</button>
+    @if (Model.HwlData.Type == "GEO")
+    {
+        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#headerScalesTable" aria-expanded="false" aria-controls="headerScalesTable">
+            Header Scales
+        </button>
+        <div class="collapse" id="headerScalesTable">
+            <table class="table">
+                <thead>
+                <tr>
+                    @{
+                        var parameterIndex = 0;
+                    }
+                    @foreach (var parameter in Model.HwlData.PlottedDrillingParameters)
+                    {
+                        var scale = parameter.HeaderScale;
+                        @*var overscale = parameter.HeaderOverscale;*@
+
+                        if (scale.HasValue)
+                        {
+                            <th data-parameter-index="@parameterIndex">@parameter.DisplayName</th>
+                        }
+
+                        @*if (overscale.HasValue)
+                        {
+                            <th data-parameter-index="@parameterIndex">@parameter.DisplayName Ovr</th>
+                        }*@
+                        parameterIndex++;
+                    }
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    @{
+                        var colIndex = 0;
+                    }
+                    @foreach (var parameter in Model.HwlData.PlottedDrillingParameters)
+                    {
+                        var scale = parameter.HeaderScale;
+                        @*var overscale = parameter.HeaderOverscale;*@
+
+                        if (scale.HasValue)
+                        {
+                            <td contenteditable="true" class="editable-cell" data-row="0" data-col="@colIndex">@scale</td>
+                            colIndex++;
+                        }
+
+                        @*if (overscale.HasValue)
+                        {
+                            <td contenteditable="true" class="editable-cell" data-row="0" data-col="@colIndex">@overscale</td>
+                            colIndex++;
+                        }*@
+                    }
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <div class="collapse" id="rawFileData">
+        <pre id="rawFileContent"></pre>
+    </div>
 
 
-    var warnings = Model.TestScalesForPlottedParameters();
+    var warnings = Model.TestScales();
+
 
 @section Scripts {
     <script>

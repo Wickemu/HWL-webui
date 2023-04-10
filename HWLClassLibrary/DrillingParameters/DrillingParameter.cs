@@ -22,6 +22,9 @@ public abstract class DrillingParameter
 
         if (hwl.Type == "OG" && OGPlotScalePosition.HasValue) PlotScales = SetPlotScales();
         if (hwl.Type == "OG" && OGPlotOverscalePosition.HasValue) PlotOverscales = SetPlotOverscales();
+        if (hwl.Type == "GEO" && GeoHeaderScalePosition.HasValue) HeaderScale = hwl.HeaderScales[HeaderScalePosition.Value];
+        if (hwl.Type == "GEO" && GeoHeaderOverscalePosition.HasValue) HeaderOverscale = hwl.HeaderScales[HeaderOverscalePosition.Value];
+
 
         if (ColorPosition.HasValue) Color = ColorTranslator.FromWin32(hwl.Colors[ColorPosition.Value]);
 
@@ -55,13 +58,13 @@ public abstract class DrillingParameter
     public int LineStyle { get; set; }
 
     protected virtual int? OGHeaderScalePosition { get; }
-    protected virtual int? GeoHeaderScalePosition { get; }
-    public int? HeaderScalePosition => hwl.Type == "OG" ? OGHeaderScalePosition : GeoHeaderScalePosition;
+    protected virtual int? GeoHeaderScalePosition { get; } = null;
+    public int? HeaderScalePosition => GeoHeaderScalePosition;
     public int? HeaderScale { get; set; }
 
     protected virtual int? OGHeaderOverscalePosition { get; }
-    protected virtual int? GeoHeaderOverscalePosition { get; }
-    public int? HeaderOverscalePosition => hwl.Type == "OG" ? OGHeaderOverscalePosition : GeoHeaderOverscalePosition;
+    protected virtual int? GeoHeaderOverscalePosition { get; } = null;
+    public int? HeaderOverscalePosition => GeoHeaderOverscalePosition;
     public int? HeaderOverscale { get; set; }
 
     protected virtual int? GeoPlotLinePosition { get; }
@@ -131,7 +134,7 @@ public abstract class DrillingParameter
         return dict;
     }
 
-    public List<string> TestScales()
+    public List<string> TestPlotScales()
     {
         var warnings = new List<string>();
         var issueCount = 0;
@@ -157,27 +160,32 @@ public abstract class DrillingParameter
                         }
                     }
                 }
-
-        if (hwl.Type == "Geo" && plotEnabled)
-        {
-            if (HeaderOverscale.HasValue && HeaderOverscale <= HeaderScale)
-            {
-                issueCount += 1;
-                warnings.Add(
-                    $"Warning: Header overscale for {DisplayName} is set to {HeaderOverscale} when it should be set above {HeaderScale}.");
-            }
-
-            if (HeaderScale.HasValue)
-                if (HeaderScale <= 0)
-                {
-                    issueCount += 1;
-                    warnings.Add(
-                        $"Warning: header scale for field {DisplayName}; Scale value is {HeaderScale} which is less than or below 0.");
-                }
-        }
-
         return warnings;
     }
+
+    public List<string> TestHeaderScales()
+{
+    var warnings = new List<string>();
+
+    if (hwl.Type.ToUpper() == "GEO")
+    {
+        //if (HeaderOverscale.HasValue && HeaderOverscale <= HeaderScale)
+        //{
+        //    warnings.Add(
+        //        $"Warning: Header overscale for {DisplayName} is set to {HeaderOverscale} when it should be set above {HeaderScale}.");
+        //}
+
+        if (HeaderScale.HasValue)
+            if (HeaderScale <= 0)
+            {
+                warnings.Add(
+                    $"Warning: header scale for field {DisplayName}; Scale value is {HeaderScale} which is less than or below 0.");
+            }
+    }
+
+    return warnings;
+}
+
 
     //public bool ScaleSelfTest()
     //{

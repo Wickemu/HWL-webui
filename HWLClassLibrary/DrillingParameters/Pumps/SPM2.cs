@@ -14,5 +14,7 @@
         protected override int? OGDisplayNamePosition => 13;
         protected override int? OGLineStylesPosition => 12;
         protected override int? OGPlotLinePosition => 26;
+        protected override int? GeoHeaderOverscalePosition => null;
+        protected override int? GeoHeaderScalePosition => null;
     }
 }

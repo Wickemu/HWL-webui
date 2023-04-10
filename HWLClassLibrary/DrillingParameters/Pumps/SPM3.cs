@@ -14,9 +14,10 @@
         protected override int? OGPlotLinePosition => 33;
 
         protected override int? GeoColorPosition => 32;
-        protected override int? GeoHeaderOverscalePosition => 25;
-        protected override int? GeoHeaderScalePosition => 24;
+        protected override int? GeoHeaderOverscalePosition => null;
+        protected override int? GeoHeaderScalePosition => null;
         protected override int? GeoLineStylesPosition => 24;
         protected override int? GeoPlotLinePosition => 51;
+
     }
 }

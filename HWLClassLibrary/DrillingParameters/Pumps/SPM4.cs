@@ -9,10 +9,10 @@
         protected override int? GeoDisplayNamePosition => 46;
 
         protected override int? GeoColorPosition => 33;
-        protected override int? GeoHeaderOverscalePosition => 26;
-        protected override int? GeoHeaderScalePosition => 25;
         protected override int? GeoLineStylesPosition => 25;
         protected override int? GeoPlotLinePosition => 52;
+        protected override int? GeoHeaderOverscalePosition => null;
+        protected override int? GeoHeaderScalePosition => null;
 
     }
 }

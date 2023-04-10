@@ -83,9 +83,9 @@ public class IndexModel : PageModel
 
         if (editedCells == null) return BadRequest();
 
-        if (HwlData == null || HwlData.PlotteDrillingParameters == null)
+        if (HwlData == null || HwlData.PlottedDrillingParameters == null)
         {
-            Console.WriteLine("Error: HwlData or HwlData.PlotteDrillingParameters is null");
+            Console.WriteLine("Error: HwlData or HwlData.PlottedDrillingParameters is null");
             return BadRequest();
         }
 
@@ -96,7 +96,7 @@ public class IndexModel : PageModel
             var newValue = int.Parse(cell.NewValue);
 
             // Update the relevant DrillingParameter object using row and col information
-            var parameter = HwlData.PlotteDrillingParameters.ElementAtOrDefault(col - 1);
+            var parameter = HwlData.PlottedDrillingParameters.ElementAtOrDefault(col - 1);
             if (parameter == null)
             {
                 Console.WriteLine($"Error: Drilling parameter not found at index {col - 1}");
@@ -182,18 +182,51 @@ public class IndexModel : PageModel
         return rowBuilder.ToString();
     }
 
-    public List<string> TestScalesForPlottedParameters()
+    public List<string> TestScales()
+    {
+        if (HwlData.Type.ToUpper() == "GEO")
+        {
+            return TestHeaderScales();
+        }
+        else if (HwlData.Type.ToUpper() == "OG")
+        {
+            return TestPlotScales();
+        }
+
+        return new List<string>(); // Return an empty list if the well type is neither GEO nor OG
+    }
+
+
+    public List<string> TestPlotScales()
     {
         _logger.LogInformation($"HwlData: {HwlData}");
 
         var allWarnings = new List<string>();
 
-        foreach (var parameter in HwlData.PlotteDrillingParameters)
+        foreach (var parameter in HwlData.PlottedDrillingParameters)
             if (parameter.PlotEnabled)
-                allWarnings.AddRange(parameter.TestScales());
+                allWarnings.AddRange(parameter.TestPlotScales());
 
         return allWarnings;
     }
+
+    public List<string> TestHeaderScales()
+    {
+        _logger.LogInformation($"HwlData: {HwlData}");
+
+        var allWarnings = new List<string>();
+
+        foreach (var parameter in HwlData.PlottedDrillingParameters)
+        {
+            if (parameter.HeaderScalePosition.HasValue || parameter.HeaderOverscalePosition.HasValue)
+            {
+                allWarnings.AddRange(parameter.TestHeaderScales());
+            }
+        }
+
+        return allWarnings;
+    }
+
 
     public IActionResult OnGetGetRawFileContent()
     {
