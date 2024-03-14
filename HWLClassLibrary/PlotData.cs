@@ -7,34 +7,60 @@
 
     public struct AnnotationLine
     {
-        public AnnotationLine(List<string> line)
+        public AnnotationLine(List<string> line, string rawText)
         {
-            Depth = double.Parse(line[0]);
-            Section = int.Parse(line[1]);
-            Offset = int.Parse(line[2]);
-            Text = line[3];
-            FontHeight = int.Parse(line[4]);
-            FontWidth = int.Parse(line[5]);
-            Font = line[6];
-            Italic = Convert.ToBoolean(int.Parse(line[7]));
-            Underline = Convert.ToBoolean(int.Parse(line[8]));
-            Color = ColorTranslator.FromWin32(int.Parse(line[9]));
-            Bold = Convert.ToBoolean(int.Parse(line[10]));
-            if (line.Count == 16)
+            // Initialize all properties to default values
+            Depth = 0;
+            Section = 0;
+            Offset = 0;
+            Text = string.Empty;
+            FontHeight = 0;
+            FontWidth = 0;
+            Font = string.Empty;
+            Italic = false;
+            Underline = false;
+            Color = Color.Empty; // Use System.Drawing.Color.Empty for default
+            Bold = false;
+            Display = false;
+            DisplayOnColor = false;
+            DisplayOnBlack = false;
+            DisplayOnMD = false;
+            DisplayOnDP = false;
+
+            try
             {
-                Display = Convert.ToBoolean(int.Parse(line[11]));
-                DisplayOnColor = Convert.ToBoolean(int.Parse(line[12]));
-                DisplayOnBlack = Convert.ToBoolean(int.Parse(line[13]));
-                DisplayOnMD = Convert.ToBoolean(int.Parse(line[14]));
-                DisplayOnDP = Convert.ToBoolean(int.Parse(line[15]));
+                Depth = double.Parse(line[0]);
+                Section = int.Parse(line[1]);
+                Offset = int.Parse(line[2]);
+                Text = line[3];
+                FontHeight = int.Parse(line[4]);
+                FontWidth = int.Parse(line[5]);
+                Font = line[6];
+                Italic = Convert.ToBoolean(int.Parse(line[7]));
+                Underline = Convert.ToBoolean(int.Parse(line[8]));
+                Color = ColorTranslator.FromWin32(int.Parse(line[9]));
+                Bold = Convert.ToBoolean(int.Parse(line[10]));
+                if (line.Count == 16)
+                {
+                    Display = Convert.ToBoolean(int.Parse(line[11]));
+                    DisplayOnColor = Convert.ToBoolean(int.Parse(line[12]));
+                    DisplayOnBlack = Convert.ToBoolean(int.Parse(line[13]));
+                    DisplayOnMD = Convert.ToBoolean(int.Parse(line[14]));
+                    DisplayOnDP = Convert.ToBoolean(int.Parse(line[15]));
+                }
+                else
+                {
+                    Display = false;
+                    DisplayOnColor = false;
+                    DisplayOnBlack = false;
+                    DisplayOnMD = false;
+                    DisplayOnDP = false;
+                }
             }
-            else
+            catch (Exception ex)
             {
-                Display = false;
-                DisplayOnColor = false;
-                DisplayOnBlack = false;
-                DisplayOnMD = false;
-                DisplayOnDP = false;
+                Console.WriteLine($"Error parsing line: {ex.Message}");
+                Console.WriteLine($"Raw Text: {rawText}");
             }
         }
 

@@ -1,4 +1,6 @@
 ﻿using System.Drawing;
+using System.Reflection.Metadata;
+using HWLClassLibrary.Data_Service;
 
 namespace HwlFileAnalyzer;
 
@@ -10,6 +12,18 @@ public abstract class DrillingParameter
 
     protected bool plotEnabled;
 
+    public int SuggestedScale
+    {
+        get
+        {
+            if (plotEnabled) return (int)Math.Ceiling((double)Data.Values.Max() / 50) * 50;
+            else return 0;
+        }
+        set => SuggestedScale = value;
+    }
+
+    public virtual int SuggestedOverscale => SuggestedScale * 2;
+
     public DrillingParameter(HwlData hwlData)
     {
         hwl = hwlData;
@@ -20,10 +34,12 @@ public abstract class DrillingParameter
             else plotEnabled = false;
         }
 
-        if (hwl.Type == "OG" && OGPlotScalePosition.HasValue) PlotScales = SetPlotScales();
+        if (hwl.Type == "OG" && OGPlotScalePosition.HasValue) PlotScales = GetPlotScales();
         if (hwl.Type == "OG" && OGPlotOverscalePosition.HasValue) PlotOverscales = SetPlotOverscales();
-        if (hwl.Type == "GEO" && GeoHeaderScalePosition.HasValue) HeaderScale = hwl.HeaderScales[HeaderScalePosition.Value];
-        if (hwl.Type == "GEO" && GeoHeaderOverscalePosition.HasValue) HeaderOverscale = hwl.HeaderScales[HeaderOverscalePosition.Value];
+        if (hwl.Type == "GEO" && GeoHeaderScalePosition.HasValue)
+            HeaderScale = hwl.HeaderScales[HeaderScalePosition.Value];
+        //if (hwl.Type == "GEO" && GeoHeaderOverscalePosition.HasValue)
+        //    HeaderOverscale = hwl.HeaderScales[HeaderOverscalePosition.Value];
 
 
         if (ColorPosition.HasValue) Color = ColorTranslator.FromWin32(hwl.Colors[ColorPosition.Value]);
@@ -107,7 +123,7 @@ public abstract class DrillingParameter
         return plot;
     }
 
-    private Dictionary<double, int> SetPlotScales()
+    private Dictionary<double, int> GetPlotScales()
     {
         var dict = new Dictionary<double, int>();
         foreach (var item in hwl.PlotScales)
@@ -134,9 +150,10 @@ public abstract class DrillingParameter
         return dict;
     }
 
-    public List<string> TestPlotScales()
+
+    public List<ScaleWarning> TestPlotScales()
     {
-        var warnings = new List<string>();
+        var warnings = new List<ScaleWarning>();
         var issueCount = 0;
         if (hwl.Type == "OG" && plotEnabled)
             if (PlotScales.Count == PlotOverscales.Count)
@@ -149,52 +166,94 @@ public abstract class DrillingParameter
                         if (pair.Value <= 0)
                         {
                             issueCount += 1;
-                            warnings.Add(
-                                $"Warning: segment scale at depth {pair.Key} for field {DisplayName}; Scale value is {pair.Value} which should be greater than 0.");
+                            warnings.Add(new ScaleWarning
+                            {
+                                Parameter = this,
+                                Message =
+                                    $"Warning: segment scale at depth {pair.Key} for field {DisplayName}; Scale value is {pair.Value} which should be greater than 0."
+                            });
                         }
                         else if (overvalue <= pair.Value)
                         {
                             issueCount += 1;
-                            warnings.Add(
-                                $"Warning: segment scale at depth {pair.Key} for field {DisplayName}; Scale value is {pair.Value} while Overscale value is {overvalue}.");
+                            warnings.Add(new ScaleWarning
+                            {
+                                Parameter = this,
+                                Message =
+                                    $"Warning: segment overscale at depth {pair.Key} for field {DisplayName}; Scale value is {pair.Value} while Overscale value is {overvalue}."
+                            });
                         }
                     }
                 }
+
         return warnings;
     }
 
-    public List<string> TestHeaderScales()
-{
-    var warnings = new List<string>();
-
-    if (hwl.Type.ToUpper() == "GEO")
+    public List<ScaleWarning> TestHeaderScales()
     {
-        //if (HeaderOverscale.HasValue && HeaderOverscale <= HeaderScale)
-        //{
-        //    warnings.Add(
-        //        $"Warning: Header overscale for {DisplayName} is set to {HeaderOverscale} when it should be set above {HeaderScale}.");
-        //}
+        var warnings = new List<ScaleWarning>();
 
-        if (HeaderScale.HasValue)
-            if (HeaderScale <= 0)
-            {
-                warnings.Add(
-                    $"Warning: header scale for field {DisplayName}; Scale value is {HeaderScale} which is less than or below 0.");
-            }
+        if (hwl.Type.ToUpper() == "GEO")
+            if (HeaderScale.HasValue)
+                if (HeaderScale <= 0)
+                {
+                    var scaleWarning = new ScaleWarning
+                    {
+                        Parameter = this,
+                        Message =
+                            $"Warning: header scale for field {DisplayName}; Scale value is {HeaderScale} which is less than or below 0. The recommended value is {SuggestedScale}",
+                        SuggestedScale = this.SuggestedScale,
+                        SuggestedOverscale = this.SuggestedOverscale
+                    };
+
+                    warnings.Add(scaleWarning);
+                }
+
+        return warnings;
     }
 
-    return warnings;
-}
+    public void ApplySuggestedScales()
+    {
+        if (hwl.Type.ToUpper() == "GEO")
+        {
+            if (HeaderScalePosition.HasValue)
+            {
+                HeaderScale = SuggestedScale;
+                HeaderOverscale = SuggestedOverscale;
+                hwl.HeaderScales[(int)HeaderScalePosition] = (int)HeaderScale;
+            }
+            else
+            {
+                // Log or handle the case when HeaderScalePosition is null
+                Console.WriteLine($"HeaderScalePosition is null for parameter {DisplayName}");
+            }
+        }
+        else if (hwl.Type.ToUpper() == "OG")
+        {
+            // Update all PlotScales and PlotOverscales values to the suggested scale
+            foreach (var key in PlotScales.Keys.ToList())
+            {
+                PlotScales[key] = SuggestedScale;
+                PlotOverscales[key] = SuggestedOverscale;
+            }
+
+            // Update all hwl.PlotScales values to the suggested scale
+            for (int row = 0; row < hwl.PlotScales.Count; row++)
+            {
+                if (hwl.PlotScales[row].Count > (int)OGPlotScalePosition)
+                {
+                    hwl.PlotScales[row][(int)OGPlotScalePosition] = SuggestedScale.ToString();
+                }
+                else
+                {
+                    // Log the out-of-range position or handle the error as needed
+                    Console.WriteLine($"OGPlotScalePosition {(int)OGPlotScalePosition} is out of range for row {row}");
+                }
+            }
+        }
+    }
 
 
-    //public bool ScaleSelfTest()
-    //{
-    //    if(HasPlotOverscale == true && HasPlotScale == true)
-    //    {
-    //        foreach (var item in PlotScales)
-    //        {
-    //            if (item.Value[OGPlotOverscalePosition] >= item.Value[OGPlotScalePosition]) return false;
-    //        }
-    //    }
-    //}
+
+
 }

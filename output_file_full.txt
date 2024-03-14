@@ -1,0 +1,4013 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace HWLClassLibrary
+{
+    internal class Exporter
+    {
+
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+
+    public struct WellInfo
+    {
+        public WellInfo(List<string> line)
+        {
+            Company = line[0];
+            if (line[1].Contains('^'))
+            {
+                var wellNames = HwlParser.ParseHeaderSub(line[1]);
+                Well = wellNames[0];
+                HeaderTitle = wellNames[1];
+            }
+            else
+            {
+                Well = line[1];
+                HeaderTitle = Well;
+            }
+            Location = line[2];
+            Elevation = line[3];
+            Field = line[4];
+            County = line[5];
+            State = line[6];
+            var apiSplit = line[7].Split("$", StringSplitOptions.None);
+            API = apiSplit[0];
+            UWI = apiSplit[1];
+            SpudDate = line[8];
+            StartDate = line[9];
+            EndDate = line[10];
+            CoGeologist = line[11];
+            DrillSiteManager = line[12];
+            Contractor = line[13];
+            Rig = line[14];
+            MudCompany = line[15];
+            Loggers = line[16].Split(",".Trim(), StringSplitOptions.None).ToList();
+            BitSize = HwlParser.ParseMultiLine(line[17]);
+            Casing = HwlParser.ParseMultiLine(line[18]);
+            Type = line[19];
+            Calibration = line[20];
+            LoggingDepths = line[21];
+        }
+
+        public string API { get; }
+        public List<string> BitSize { get; }
+        public string Calibration { get; }
+        public List<string> Casing { get; }
+        public string CoGeologist { get; }
+        public string Company { get; }
+        public string Contractor { get; }
+        public string County { get; }
+        public string DrillSiteManager { get; }
+        public string Elevation { get; }
+        public string EndDate { get; }
+        public string Field { get; }
+        public string HeaderTitle { get; }
+        public string Location { get; }
+        public List<string> Loggers { get; }
+        public string LoggingDepths { get; }
+        public string MudCompany { get; }
+        public string Rig { get; }
+        public string SpudDate { get; }
+        public string StartDate { get; }
+        public string State { get; }
+        public string Type { get; }
+        public string UWI { get; }
+        public string Well { get; }
+        //Company           
+        //Well^HeaderTitle
+        //Location
+        //Elevation
+        //Field
+        //County
+        //State
+        //API
+        //SpudDate
+        //LoggingStart
+        //LogEnd
+        //CompanyGeologist
+        //DrillSiteManager
+        //Contractor
+        //Rig
+        //MudCompany
+        //Loggers
+        //BitSize
+        //Casing
+        //Type
+        //(Unknown... Calibration?)
+        //LoggingDepths
+
+    }
+
+    public struct ProgramInfo
+    {
+        public ProgramInfo(List<string> line)
+        {
+            SoftwareName = line[0];
+            WellType = line[1];
+            NarrowFormat = Convert.ToBoolean(int.Parse(line[2]));
+            DPI = int.Parse(line[3]);
+            UnitsPerInch = int.Parse(line[4]);
+            DrawInterpretiveLithology = Convert.ToBoolean(int.Parse(line[5]));
+            DrawTVDAnnotations = Convert.ToBoolean(int.Parse(line[6]));
+            VersionNumber = int.Parse(line[7]);
+            DepthNotations00 = Convert.ToBoolean(int.Parse(line[8]));
+            TVDNotationsOn = Convert.ToBoolean(int.Parse(line[9]));
+            PlotAux1 = Convert.ToBoolean(int.Parse(line[10]));
+            PlotAux2 = Convert.ToBoolean(int.Parse(line[11]));
+            PlotAux3 = Convert.ToBoolean(int.Parse(line[12]));
+            PlotAux4 = Convert.ToBoolean(int.Parse(line[13]));
+            PlotAux5 = Convert.ToBoolean(int.Parse(line[14]));
+            PlotAux6 = Convert.ToBoolean(int.Parse(line[15]));
+        }
+
+        public string SoftwareName { get; }
+        public string WellType { get; }
+        public bool NarrowFormat { get; }
+        public int DPI { get; }
+        public int UnitsPerInch { get; }
+        public bool DrawInterpretiveLithology { get; set; }
+        public bool DrawTVDAnnotations { get; set; }
+        public int VersionNumber { get; }
+        public bool DepthNotations00 { get; set; }
+        public bool TVDNotationsOn { get; set; }
+        public bool PlotAux1 { get; set; }
+        public bool PlotAux2 { get; set; }
+        public bool PlotAux3 { get; set; }
+        public bool PlotAux4 { get; set; }
+        public bool PlotAux5 { get; set; }
+        public bool PlotAux6 { get; set; }
+    }
+
+    //VersionNumber	DepthNotationson00s	Unknown	PlotAux1	PlotAux2	PlotAux3	PlotAux4	PlotAux5	PlotAux6
+
+
+}
+
+﻿namespace HwlFileAnalyzer;
+
+public class HwlData
+{
+    private List<int> depthIndex;
+
+    private List<DrillingParameter> plottedDrillingParameters;
+    private List<double> roundedDepths;
+
+    private List<DrillingParameter> unplottedDrillingParameters;
+
+    public string Type { get; set; }
+    public ProgramInfo ProgramInfo { get; set; }
+    public WellInfo WellInfo { get; set; }
+    public List<int> Colors { get; set; }
+    public List<string> DisplayNames { get; set; }
+    public List<string> LineStyles { get; set; }
+    public Dictionary<int, string> LithologyLegend { get; set; }
+    public List<int> HeaderScales { get; set; }
+    public List<TVDLine>? TVDs { get; set; }
+    public List<CasingPointLine>? CasingPoints { get; set; }
+    public List<NewBitLine>? NewBits { get; set; }
+    public List<AnnotationLine> Annotations { get; set; }
+    public Dictionary<string, string> Abbreviations { get; set; }
+    public List<int> LithSymbols { get; set; }
+    public List<List<string>> PlotScales { get; set; }
+    public List<double> Depths { get; set; }
+
+    public double TopDepth => Depths.Min();
+    public double DepthOffset => TopDepth - 1;
+    public double BottomDepth => Depths.Max();
+    public List<ChromatographyLine> Chromatography { get; set; }
+    public List<DescriptionLine> Descriptions { get; set; }
+    public List<List<string>> DrillingParameterData { get; set; }
+    public List<DrillingParameter> DrillingParameters { get; set; }
+
+    public List<DrillingParameter> PlottedDrillingParameters
+    {
+        get
+        {
+            if (plottedDrillingParameters != null) plottedDrillingParameters.Clear();
+            else plottedDrillingParameters = new List<DrillingParameter>();
+            foreach (var item in DrillingParameters)
+                if (item.PlotEnabled)
+                    plottedDrillingParameters.Add(item);
+                else continue;
+
+            return plottedDrillingParameters;
+        }
+    }
+
+    public List<DrillingParameter> UnplottedDrillingParameters
+    {
+        get
+        {
+            if (unplottedDrillingParameters != null) unplottedDrillingParameters.Clear();
+            else unplottedDrillingParameters = new List<DrillingParameter>();
+            foreach (var item in DrillingParameters)
+                if (item.PlotEnabled == false)
+                    unplottedDrillingParameters.Add(item);
+                else continue;
+
+            return unplottedDrillingParameters;
+        }
+    }
+
+    public List<LithologyLine> Lithology { get; set; }
+
+    public List<double> RoundedDepths
+    {
+        get
+        {
+            var rounded = new List<double>();
+            foreach (var item in Depths)
+                if (Math.Abs(item) % 50 == 0)
+                    rounded.Add(item);
+
+            return rounded;
+        }
+    }
+
+    public void FixScales()
+    {
+        foreach (var parameter in PlottedDrillingParameters)
+        {
+            parameter.ApplySuggestedScales();
+        }
+    }
+}
+﻿using HwlFileAnalyzer.Columns;
+
+namespace HwlFileAnalyzer
+{
+    public class HwlPlotter
+    {
+        private HwlData hwl;
+        private List<double> rangeIndex;
+        private List<double> rangeList;
+
+        private int NumofColumns { get; set; } = 7;
+        private Dictionary<int, IColumn> Columns { get; set; }
+        private string PlotType { get; set; } //"mud" or "dp"
+
+        public HwlPlotter(HwlData hwlData)
+        {
+            hwl = hwlData;
+            SelectedTop = hwl.TopDepth;
+            SelectedBottom = hwl.BottomDepth;
+        }
+
+        public double SelectedBottom { get; set; }
+        public List<double> SelectedRange => rangeList;
+        public List<double> SelectedRangeIndex => rangeIndex;
+        public double SelectedTop { get; set; }
+        public double Avg(List<int> plotData)
+        {
+            return Math.Round(plotData.Average(), 0);
+        }
+
+        public List<double> GetDpPlot(DrillingParameter dp)
+        {
+            var dpRange = new List<double>();
+            foreach (var i in SelectedRange)
+            {
+                if (!dp.Data.ContainsKey(i)) dpRange.Add(i);
+                else dpRange.Add(dp.Data[i]);
+            }
+
+            return dpRange;
+        }
+
+        public List<string[]> GetPlot(List<DrillingParameter> dpList)
+        {
+            List<string[]> plot = new List<string[]>();
+            List<string> plotLine = new List<string>();
+            plotLine.Add("Depth");
+            foreach (var item in dpList)
+            {
+                plotLine.Add(item.DisplayName);
+            }
+
+            plot.Add(plotLine.ToArray());
+            plotLine.Clear();
+            plotLine.Add("Ft");
+            foreach (var item in dpList)
+            {
+                plotLine.Add(item.UnitOfMeasurement);
+            }
+
+            plot.Add(plotLine.ToArray());
+            plotLine.Clear();
+            foreach (var i in SelectedRange)
+            {
+                string printedDepth = i.ToString();
+                plotLine.Add(printedDepth);
+                foreach (var item in dpList)
+                {
+                    string printedString;
+                    if (!item.Data.ContainsKey(i)) printedString = "";
+                    else printedString = item.Data[i].ToString();
+                    plotLine.Add(printedString);
+                }
+
+                plot.Add(plotLine.ToArray());
+                plotLine.Clear();
+            }
+
+            return plot;
+        }
+
+        public double Max(List<double> plotData)
+        {
+            plotData.RemoveAll(i => i == -999);
+            return plotData.Max();
+        }
+
+        public double Min(List<double> plotData)
+        {
+            plotData.RemoveAll(i => i == -999);
+            return plotData.Min();
+        }
+
+        public double No0Avg(List<double> plotData)
+        {
+            plotData.RemoveAll(i => i == 0);
+            if (plotData.Count == 0)
+            {
+                return 0;
+            }
+            else
+            {
+                return Math.Round(plotData.Average(), 0);
+
+            }
+        }
+
+        public void SetRange()
+        {
+            if (rangeList == null) rangeList = new List<double>();
+            else rangeList.Clear();
+            if (rangeIndex == null) rangeIndex = new List<double>();
+            else rangeIndex.Clear();
+
+            for (int i = 0; i < hwl.Depths.Count; i++)
+            {
+                if (hwl.Depths[i] >= SelectedTop && hwl.Depths[i] <= SelectedBottom)
+                {
+                    if (rangeList == null) rangeList = new List<double>();
+                    rangeList.Add(hwl.Depths[i]);
+                    rangeIndex.Add(i);
+                }
+            }
+        }
+
+        public string PlotLine(double depth)
+        {
+            var strings = new List<string>();
+            for (int i = 0; i < NumofColumns; i++)
+            {
+                strings.Add(Columns[i].GetPlotLine(depth));
+            }
+
+            return string.Join("|", strings);
+        }
+
+        public void PrintLine(double depth)
+        {
+            for (int i = 0; i < NumofColumns; i++)
+            {
+                Columns[i].PrintPlotLine(depth);
+                Console.ForegroundColor = ConsoleColor.Black;
+                Console.Write("|");
+            }
+            Console.Write('\b');
+        }
+
+        public string PlotLineHeader()
+        {
+            int maxFields = 0;
+            for (int i = 0; i < NumofColumns; i++)
+            {
+                if (Columns[i].NumOfFields > maxFields) maxFields = Columns[i].NumOfFields;
+            }
+
+            var allLines = new List<string>();
+            for (int i = 0; i < maxFields; i++)
+            {
+                var thisLine = new List<string>();
+                for (int a = 0; a < NumofColumns; a++)
+                {
+                    if (i < Columns[a].NumOfFields) thisLine.Add(Columns[a].HeaderItems[i].PadRight(Columns[a].Width).Substring(0, Columns[a].Width));
+                    else thisLine.Add("".PadRight(Columns[a].Width));
+                }
+                allLines.Add(string.Join("|", thisLine));
+            }
+            allLines.Add(new String('=', allLines[0].Length));
+            return string.Join("\n", allLines);
+        }
+
+        public void PrintLineHeader()
+        {
+            int maxFields = 0;
+            for (int i = 0; i < NumofColumns; i++)
+            {
+                if (Columns[i].NumOfFields > maxFields) maxFields = Columns[i].NumOfFields;
+            }
+
+            for (int i = 0; i < maxFields; i++)
+            {
+                Console.Write("|");
+                for (int a = 0; a < NumofColumns; a++)
+                {
+                    Columns[a].PrintHeaderItem(i);
+                    Console.ForegroundColor = ConsoleColor.Black;
+                    Console.Write("|");
+                }
+                Console.WriteLine();
+            }
+            int fullWidth = 0;
+            string separator = "|";
+            for (int i = 0; i < Columns.Count; i++)
+            {
+                fullWidth += Columns[i].Width;
+                separator += new String('=', Columns[i].Width);
+                separator += "|";
+            }
+            fullWidth += NumofColumns;
+            Console.WriteLine(separator);
+            Console.WindowWidth = fullWidth + 1;
+            //Console.WriteLine(new string('=', fullWidth));
+        }
+
+        public void SetMDDefaults()
+        {
+            //NumofColumns = 6;
+            if (Columns is null) Columns = new Dictionary<int, IColumn>();
+            else Columns.Clear();
+
+            var col0 = new ParameterColumn() { HeaderName = "Drill Rate" };
+            Columns.Add(0, col0);
+            var col1 = new DepthColumn(hwl);
+            Columns.Add(1, col1);
+            var col2 = new LithologyColumn(hwl);
+            Columns.Add(2, col2);
+            var col3 = new ParameterColumn() { HeaderName = "Shows" };
+            Columns.Add(3, col3);
+            var col4 = new ParameterColumn() { HeaderName = "Gases" };
+            Columns.Add(4, col4);
+            var col5 = new ParameterColumn() { HeaderName = "Chromatograph" };
+            Columns.Add(5, col5);
+            var col6 = new DescriptionColumn(hwl) { HeaderName = "Descriptions" };
+            Columns.Add(6, col6);
+            foreach (var item in hwl.DrillingParameters)
+            {
+                if (item.GetType() == typeof(DrillRate)) col0.AddParameter(item);
+                if (item.GetType() == typeof(WOB)) col0.AddParameter(item);
+                if (item.GetType() == typeof(Shows)) col3.AddParameter(item);
+                if (item.GetType() == typeof(TotalGas)) col4.AddParameter(item);
+                if (item.GetType() == typeof(CuttingsGas)) col4.AddParameter(item);
+                if (item.GetType() == typeof(C1)) col5.AddParameter(item);
+                if (item.GetType() == typeof(C2)) col5.AddParameter(item);
+                if (item.GetType() == typeof(C3)) col5.AddParameter(item);
+                if (item.GetType() == typeof(C4)) col5.AddParameter(item);
+                if (item.GetType() == typeof(C5)) col5.AddParameter(item);
+            }
+        }
+
+        public void GetMudLogLayout()
+        {
+            if (Columns is null) Columns = new Dictionary<int, IColumn>();
+            else Columns.Clear();
+            Columns.Add(1, new DepthColumn(hwl));
+            Columns.Add(2, new LithologyColumn(hwl));
+            Columns.Add(6, new DescriptionColumn(hwl));
+            var plotty = hwl.PlottedDrillingParameters.ToList();
+
+            for (int i = 0; i < NumofColumns; i++)
+            {
+                if (i == 1 || i == 2 || i == 6) continue;
+                var col = new ParameterColumn();
+                foreach (var item in plotty)
+                {
+                    if (item.GetType() == typeof(SPM)
+                        || item.GetType() == typeof(PumpPressure)
+                        || item.GetType() == typeof(RPM)
+                        || item.GetType() == typeof(Torque)) continue;
+                    if (item.Column == i)
+                    {
+                        //if (Columns.ContainsKey(i)) col.Fields.Add(hwl.PlottedDrillingParameters[i]);
+                        col.AddParameter(item);
+                    }
+
+                }
+
+                Columns.Add(i, col);
+            }
+
+            Columns.OrderBy(i => i.Key);
+        }
+    }
+}
+
+﻿using HwlFileAnalyzer.Drilling_Parameters.Temperature;
+using HwlFileAnalyzer.Testing_New_Ideas;
+
+namespace HwlFileAnalyzer;
+
+public class Importer
+{
+    private readonly ProgramInfo Program;
+    public readonly TableOfContents TOC;
+
+    public Importer(string filePath)
+    {
+        RawText = GetFileText(filePath);
+        TOC = new TableOfContents(RawText);
+        Program = ImportProgramInfo();
+    }
+
+    public string FileType => Program.WellType;
+
+    //public List<string[]> PlotScales { get; set; }
+    public List<string> RawText { get; set; }
+    private HwlData Hwl { get; set; }
+
+    public string UnparseOGPlotScales(List<string> items)
+    {
+        var result = "$" + string.Join("|", items);
+        return result;
+    }
+
+    public string UnparseHeaderLine(List<int> items)
+    {
+        var result = string.Join("|", items);
+        return result;
+    }
+
+    public static List<string> GetFileText(string filePath)
+    {
+        return File.ReadAllLines(filePath).ToList();
+    }
+
+    public bool ValidateItemsCount(List<string> splitLine, int tocIndex)
+    {
+        if (TOC.expectedHeaderItems.ContainsKey(tocIndex))
+        {
+            var expectedCount = TOC.expectedHeaderItems[tocIndex];
+            var foundCount = splitLine.Count;
+
+            if (foundCount != expectedCount)
+                throw new Exception(
+                    $"Invalid number of items on HWL file line {tocIndex + 1}. Expected: {expectedCount}, Found: {foundCount}");
+
+            return true;
+        }
+
+        throw new Exception($"No expected item count is defined for TOC index {tocIndex}");
+    }
+
+
+    public Dictionary<string, string> ImportAbbreviations()
+    {
+        var abbreviations = new Dictionary<string, string>();
+        foreach (var i in TOC.Abbreviations)
+        {
+            var line = HwlParser.ParsePlotLine(RawText[i]);
+            if (line[0] == "") continue;
+            abbreviations.Add(line[0], line[1]);
+        }
+
+        return abbreviations;
+    }
+
+    public List<AnnotationLine> ImportAnnotations()
+    {
+        var annotations = new List<AnnotationLine>();
+        if (TOC.Annotations != null)
+        {
+            foreach (var i in TOC.Annotations)
+            {
+                var line = HwlParser.ParsePlotLine(RawText[i]);
+                annotations.Add(new AnnotationLine(line, RawText[i]));
+            }
+
+            var sortedAnnotations = annotations.OrderBy(o => o.Depth).ToList();
+            return sortedAnnotations;
+        }
+
+        return annotations;
+    }
+
+    public List<CasingPointLine>? ImportCasingPoints()
+    {
+        if (TOC.CasingPoints == null) return null;
+        var casingPoints = new List<CasingPointLine>();
+        foreach (var i in TOC.CasingPoints)
+        {
+            var line = HwlParser.ParsePlotLine(RawText[i]);
+            casingPoints.Add(new CasingPointLine(line));
+        }
+
+        var sortedCasingPoints = casingPoints.OrderBy(o => o.Depth).ToList();
+        return sortedCasingPoints;
+    }
+
+    public List<ChromatographyLine> ImportChromatography()
+    {
+        var chromatography = new List<ChromatographyLine>();
+        foreach (var i in TOC.Plot)
+        {
+            var splitLine = HwlParser.ParsePlotLine(RawText[i]);
+            chromatography.Add(new ChromatographyLine(splitLine));
+        }
+
+        return chromatography;
+    }
+
+    public List<int> ImportColors()
+    {
+        var colors = new List<int>();
+        var splitLine = HwlParser.ParseHeaderLine(RawText[TOC.Colors]);
+        // Call the ValidateItemsCount method
+        if (!ValidateItemsCount(splitLine, TOC.Colors))
+            throw new Exception("Invalid number of items in the Colors line.");
+        foreach (var item in splitLine) colors.Add(int.Parse(item));
+
+        return colors;
+    }
+
+    public List<double> ImportDepths()
+    {
+        var depths = new List<double>();
+        foreach (var line in TOC.Plot)
+        {
+            var depth = Convert.ToDouble(HwlParser.ParsePlotLine(RawText[line])[0]);
+            depths.Add(depth);
+        }
+
+        return depths;
+    }
+
+    public List<DescriptionLine> ImportDescriptions()
+    {
+        var descriptions = new List<DescriptionLine>();
+        foreach (var i in TOC.Plot)
+        {
+            var line = RawText[i];
+            var splitLine = HwlParser.ParsePlotLine(line); // line.Split("|");
+            int descSlot;
+            if (FileType == "OG") descSlot = 11;
+            else descSlot = 36;
+            if (splitLine[descSlot].Count() > 23)
+            {
+                var lineToSend = new List<string>();
+                lineToSend.Add(splitLine[0]);
+                lineToSend.Add(splitLine[descSlot]);
+                descriptions.Add(new DescriptionLine(lineToSend));
+            }
+        }
+
+        return descriptions;
+    }
+
+    public List<string> ImportDisplaynames()
+    {
+        var listy = HwlParser.ParseHeaderLine(RawText[TOC.HeaderLegend]);
+        //listy.Add(HwlParser.ParseHeaderLine(RawText[TableOfContents["HeaderLegend"]]).ToList());
+        //listy.Add(HwlParser.ParseHeaderLine(RawText[TableOfContents["HeaderLegend"] + 1]).ToList());
+        return listy;
+    }
+
+    //! For now, you need to add each parameter to this import method so don't forget to do so if you add or remove any!!
+    public List<DrillingParameter> ImportDrillingParameters()
+    {
+        var drillingParameters = new List<DrillingParameter>();
+        drillingParameters.Add(new DrillRate(Hwl));
+        drillingParameters.Add(new WOB(Hwl));
+        drillingParameters.Add(new DitchGas(Hwl));
+        drillingParameters.Add(new C1(Hwl));
+        drillingParameters.Add(new C2(Hwl));
+        drillingParameters.Add(new C3(Hwl));
+        drillingParameters.Add(new C4(Hwl));
+        drillingParameters.Add(new C5(Hwl));
+        drillingParameters.Add(new PumpPressure(Hwl));
+        drillingParameters.Add(new Torque(Hwl));
+        drillingParameters.Add(new PitVolume(Hwl));
+        drillingParameters.Add(new GainLoss(Hwl));
+        drillingParameters.Add(new FlowIn(Hwl));
+        drillingParameters.Add(new FlowOut(Hwl));
+        drillingParameters.Add(new SPM1(Hwl));
+        drillingParameters.Add(new SPM2(Hwl));
+        drillingParameters.Add(new SPM3(Hwl));
+        drillingParameters.Add(new Aux1(Hwl));
+        drillingParameters.Add(new Aux2(Hwl));
+        drillingParameters.Add(new Aux3(Hwl));
+        drillingParameters.Add(new Aux4(Hwl));
+        drillingParameters.Add(new Aux5(Hwl));
+        drillingParameters.Add(new Aux6(Hwl));
+
+        if (FileType == "OG")
+        {
+            drillingParameters.Add(new Shows(Hwl));
+            drillingParameters.Add(new Balance(Hwl));
+            drillingParameters.Add(new Wetness(Hwl));
+            drillingParameters.Add(new CuttingsGas(Hwl));
+            drillingParameters.Add(new Character(Hwl));
+            drillingParameters.Add(new LinearChromatography(Hwl));
+        }
+
+        else
+        {
+            drillingParameters.Add(new Quartzite(Hwl));
+            drillingParameters.Add(new Calcite(Hwl));
+            drillingParameters.Add(new Chlorite(Hwl));
+            drillingParameters.Add(new Epidotal(Hwl));
+            drillingParameters.Add(new Hematite(Hwl));
+            drillingParameters.Add(new Pyrite(Hwl));
+            drillingParameters.Add(new Anhydrite(Hwl));
+            drillingParameters.Add(new Sericite(Hwl));
+            drillingParameters.Add(new Fractures(Hwl));
+            drillingParameters.Add(new TemperatureIn(Hwl));
+            drillingParameters.Add(new TemperatureOut(Hwl));
+            drillingParameters.Add(new TempDiff(Hwl));
+        }
+
+        return drillingParameters;
+    }
+
+    public List<int> ImportHeaderScales()
+    {
+        var heads = new List<int>();
+        foreach (var line in TOC.HeadScales)
+        {
+            var splitLine = HwlParser.ParsePlotLine(RawText[line]);
+            foreach (var i in splitLine) heads.Add(int.Parse(i));
+        }
+
+        return heads;
+    }
+
+    public HwlData ImportHWL()
+    {
+        Hwl = new HwlData
+        {
+            Type = FileType,
+            ProgramInfo = ImportProgramInfo(),
+            WellInfo = ImportWellInfo(),
+            Colors = ImportColors(),
+            LineStyles = ImportLineStyles(),
+            DisplayNames = ImportDisplaynames(),
+            LithologyLegend = ImportLithologyLegend(),
+            HeaderScales = ImportHeaderScales(),
+            TVDs = ImportTVD(),
+            CasingPoints = ImportCasingPoints(),
+            NewBits = ImportNewBits(),
+            Annotations = ImportAnnotations(),
+            Abbreviations = ImportAbbreviations(),
+            LithSymbols = ImportLithSymbols(),
+            Chromatography = ImportChromatography(),
+            Descriptions = ImportDescriptions(),
+            Lithology = ImportLithology(),
+            PlotScales = ImportPlotScales()
+        };
+        Hwl.Depths = ImportDepths();
+        Hwl.DrillingParameterData = ImportPlotLines();
+        Hwl.DrillingParameters = ImportDrillingParameters();
+
+        return Hwl;
+    }
+
+    public List<string> ImportLineStyles()
+    {
+        var styleLine = TOC.LineStyles;
+        var splitLine = HwlParser.ParseHeaderLine(RawText[styleLine]);
+        // Call the ValidateItemsCount method
+        if (!ValidateItemsCount(splitLine, TOC.LineStyles))
+            throw new Exception("Invalid number of items in the LineStyles line.");
+        //splitLine.RemoveAt(0);
+        //List<int> lineStyles = splitLine.Select(int.Parse).ToList();
+        return splitLine;
+    }
+
+    //NEEDS TO BE UPDATED FOR GEOTHERMAL (and not depth-dependent)
+    public List<LithologyLine> ImportLithology()
+    {
+        var lithology = new List<LithologyLine>();
+        foreach (var line in TOC.Plot)
+        {
+            var splitLine = HwlParser.ParsePlotLine(RawText[line]);
+            if (string.IsNullOrEmpty(splitLine[TOC.PlotLithology[1]])) continue;
+            var lithline = new List<string>();
+            foreach (var i in TOC.PlotLithology)
+                if (i == TOC.PlotLithology.Last() && FileType == "OG")
+                {
+                    var subSplitLine = HwlParser.ParseHeaderSub(splitLine[i]);
+                    lithline.Add(subSplitLine[0]);
+                    lithline.Add(subSplitLine[1]);
+                }
+                else
+                {
+                    lithline.Add(splitLine[i]);
+                }
+
+            lithology.Add(new LithologyLine(lithline));
+        }
+
+        return lithology;
+    }
+
+    public Dictionary<int, string> ImportLithologyLegend()
+    {
+        var lithologyLegend = new Dictionary<int, string>();
+        var lithLine = TOC.Lithology;
+        var splitLine = HwlParser.ParseHeaderLine(RawText[lithLine]);
+        // Call the ValidateItemsCount method
+        if (!ValidateItemsCount(splitLine, TOC.Lithology))
+            throw new Exception("Invalid number of items in the Lithology line.");
+        foreach (var item in splitLine)
+        {
+            var splitItem = HwlParser.ParseHeaderSub(item);
+            //var dict = new Dictionary<int, string>();
+            lithologyLegend.Add(int.Parse(splitItem[0]), splitItem[1]);
+            //lithologyLegend.Add(dict);
+        }
+
+        return lithologyLegend;
+    }
+
+    public List<int> ImportLithSymbols()
+    {
+        var lith = new List<int>();
+        {
+            foreach (var i in TOC.LithSymbols)
+                if (FileType == "OG")
+                {
+                    lith.Add(int.Parse(RawText[i].Trim()));
+                }
+                else
+                {
+                    var splitLine = HwlParser.ParsePlotLine(RawText[i]);
+                    foreach (var item in splitLine) lith.Add(int.Parse(item.Trim()));
+                }
+        }
+        return lith;
+    }
+
+    public List<NewBitLine>? ImportNewBits()
+    {
+        if (TOC.NewBits == null) return null;
+        var newbits = new List<NewBitLine>();
+        foreach (var i in TOC.NewBits)
+        {
+            var line = HwlParser.ParsePlotLine(RawText[i]);
+            newbits.Add(new NewBitLine(line));
+        }
+
+        var sortedNewBits = newbits.OrderBy(o => o.Depth).ToList();
+        return sortedNewBits;
+    }
+
+    public List<List<string>> ImportPlotLines()
+    {
+        var dpData = new List<List<string>>();
+        foreach (var i in TOC.Plot) dpData.Add(HwlParser.ParsePlotLine(RawText[i]));
+
+        return dpData;
+    }
+
+    public List<List<string>> ImportPlotScales()
+    {
+        var plotScales = new List<List<string>>();
+        {
+            foreach (var i in TOC.OGPlotScales)
+            {
+                var line = RawText[i];
+                var splitLine = HwlParser.ParsePlotLine(line.Trim('$'));
+                plotScales.Add(splitLine);
+            }
+        }
+
+        return plotScales;
+    }
+
+    public ProgramInfo ImportProgramInfo()
+    {
+        var splitLine = HwlParser.ParseHeaderLine(RawText[TOC.ProgramInfo]);
+        // Call the ValidateItemsCount method
+        if (!ValidateItemsCount(splitLine, TOC.ProgramInfo))
+            throw new Exception("Invalid number of items in the ProgramInfo line.");
+        var programInfo = new ProgramInfo(splitLine);
+        return programInfo;
+    }
+
+    public List<TVDLine> ImportTVD()
+    {
+        if (!TOC.TVD.HasValue) return null;
+
+        var tvd = new List<TVDLine>();
+        var splitLines = RawText[TOC.TVD.Value].Split("|").ToList();
+        foreach (var item in splitLines)
+        {
+            var splitLine = item.Split("/").ToList();
+            tvd.Add(new TVDLine(splitLine));
+        }
+
+        return tvd;
+    }
+
+    public WellInfo ImportWellInfo()
+    {
+        var splitLine = HwlParser.ParseHeaderLine(RawText[TOC.WellInfo]);
+        // Call the ValidateItemsCount method
+        if (!ValidateItemsCount(splitLine, TOC.WellInfo))
+            throw new Exception("Invalid number of items in the WellInfo line.");
+        var wellInfo = new WellInfo(splitLine);
+        return wellInfo;
+    }
+}
+﻿namespace HwlFileAnalyzer
+{
+    using System;
+    using CsvHelper;
+    using System.Collections.Generic;
+    using System.Drawing;
+
+    public struct AnnotationLine
+    {
+        public AnnotationLine(List<string> line, string rawText)
+        {
+            // Initialize all properties to default values
+            Depth = 0;
+            Section = 0;
+            Offset = 0;
+            Text = string.Empty;
+            FontHeight = 0;
+            FontWidth = 0;
+            Font = string.Empty;
+            Italic = false;
+            Underline = false;
+            Color = Color.Empty; // Use System.Drawing.Color.Empty for default
+            Bold = false;
+            Display = false;
+            DisplayOnColor = false;
+            DisplayOnBlack = false;
+            DisplayOnMD = false;
+            DisplayOnDP = false;
+
+            try
+            {
+                Depth = double.Parse(line[0]);
+                Section = int.Parse(line[1]);
+                Offset = int.Parse(line[2]);
+                Text = line[3];
+                FontHeight = int.Parse(line[4]);
+                FontWidth = int.Parse(line[5]);
+                Font = line[6];
+                Italic = Convert.ToBoolean(int.Parse(line[7]));
+                Underline = Convert.ToBoolean(int.Parse(line[8]));
+                Color = ColorTranslator.FromWin32(int.Parse(line[9]));
+                Bold = Convert.ToBoolean(int.Parse(line[10]));
+                if (line.Count == 16)
+                {
+                    Display = Convert.ToBoolean(int.Parse(line[11]));
+                    DisplayOnColor = Convert.ToBoolean(int.Parse(line[12]));
+                    DisplayOnBlack = Convert.ToBoolean(int.Parse(line[13]));
+                    DisplayOnMD = Convert.ToBoolean(int.Parse(line[14]));
+                    DisplayOnDP = Convert.ToBoolean(int.Parse(line[15]));
+                }
+                else
+                {
+                    Display = false;
+                    DisplayOnColor = false;
+                    DisplayOnBlack = false;
+                    DisplayOnMD = false;
+                    DisplayOnDP = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error parsing line: {ex.Message}");
+                Console.WriteLine($"Raw Text: {rawText}");
+            }
+        }
+
+        public bool Bold { get; set; }
+        public Color Color { get; set; }
+        public double Depth { get; set; }
+        public bool Display { get; set; }
+        public bool DisplayOnBlack { get; set; }
+        public bool DisplayOnColor { get; set; }
+        public bool DisplayOnDP { get; set; }
+        public bool DisplayOnMD { get; set; }
+        public string Font { get; set; }
+        public int FontHeight { get; set; }
+        public int FontWidth { get; set; }
+        public bool Italic { get; set; }
+        public int Offset { get; set; }
+        public int Section { get; set; }
+        public string Text { get; set; }
+        public bool Underline { get; set; }
+    }
+
+    public struct CasingPointLine
+    {
+        public CasingPointLine(List<string> line)
+        {
+            Depth = double.Parse(line[0]);
+            Diameter = line[1];
+            Date = line[2];
+        }
+
+        public string Date { get; set; }
+        public double Depth { get; set; }
+
+        public string Diameter { get; set; }
+    }
+
+    public struct TVDLine
+    {
+        public TVDLine(List<string> line)
+        {
+            MD = int.Parse(line[0]);
+            TVD = int.Parse(line[1]);
+        }
+
+        public int MD { get; set; }
+        public int TVD { get; set; }
+    }
+
+    public struct ChromatographyLine
+    {
+        public ChromatographyLine(List<string> line)
+        {
+            Depth = double.Parse(line[0]);
+            Methane = int.Parse(line[4]);
+            Ethanol = int.Parse(line[5]);
+            Propane = int.Parse(line[6]);
+            Butanel = int.Parse(line[7]);
+            Pentane = int.Parse(line[9]);
+            TotalGas = int.Parse(line[3]);
+        }
+
+        public int Butanel { get; set; }
+        public double Depth { get; set; }
+
+        public int Ethanol { get; set; }
+        public int Methane { get; set; }
+        public int Pentane { get; set; }
+        public int Propane { get; set; }
+        public int TotalGas { get; set; }
+    }
+
+    public struct DescriptionLine
+    {
+        public DescriptionLine(List<string> line)
+        {
+            Depth = double.Parse(line[0]);
+            var splitLine = line[1].Split("*/", StringSplitOptions.None);
+            Description = splitLine[0];
+            Boxed = Convert.ToBoolean(int.Parse(splitLine[1]));
+            UnderlineRockType = Convert.ToBoolean(int.Parse(splitLine[2]));
+            Unknown = splitLine[3];
+            Italic = Convert.ToBoolean(int.Parse(splitLine[4]));
+            Underlined = Convert.ToBoolean(int.Parse(splitLine[5]));
+            Color = ColorTranslator.FromWin32(int.Parse(splitLine[6]));
+            Font = splitLine[7];
+            Bold = Convert.ToBoolean(int.Parse(splitLine[8]));
+        }
+
+        public bool Bold { get; set; }
+        public bool Boxed { get; set; }
+        public Color Color { get; set; }
+        public double Depth { get; set; }
+
+        public string Description { get; set; }
+        public string Font { get; set; }
+        public bool Italic { get; set; }
+        public bool Underlined { get; set; }
+        public bool UnderlineRockType { get; set; }
+
+        public string Unknown { get; set; }
+    }
+
+    public struct DrillingParameterLine
+    {
+        public DrillingParameterLine(string[] line)
+        {
+            Depth = double.Parse(line[0]);
+            ROP = int.Parse(line[1]);
+            WOB = int.Parse(line[2]);
+            PumpPressure = int.Parse(line[24]);
+            SPM1 = int.Parse(line[25]);
+            SPM2 = int.Parse(line[26]);
+            FlowIn = int.Parse(line[27]);
+            FlowOut = int.Parse(line[28]);
+            GainLoss = int.Parse(line[29]);
+            RPM = int.Parse(line[30]);
+            Torque = int.Parse(line[31]);
+            PitVolume = int.Parse(line[32]);
+            SPM3 = int.Parse(line[33]);
+            Aux1 = int.Parse(line[34]);
+            Aux2 = int.Parse(line[35]);
+            Aux3 = int.Parse(line[36]);
+            Aux4 = int.Parse(line[37]);
+            Aux5 = int.Parse(line[38]);
+            Aux6 = int.Parse(line[39]);
+        }
+
+        public int Aux1 { get; set; }
+        public int Aux2 { get; set; }
+        public int Aux3 { get; set; }
+        public int Aux4 { get; set; }
+        public int Aux5 { get; set; }
+        public int Aux6 { get; set; }
+        public double Depth { get; set; }
+
+        public int FlowIn { get; set; }
+        public int FlowOut { get; set; }
+        public int GainLoss { get; set; }
+        public int PitVolume { get; set; }
+        public int PumpPressure { get; set; }
+        public int ROP { get; set; }
+
+        public int RPM { get; set; }
+        public int SPM1 { get; set; }
+        public int SPM2 { get; set; }
+        public int SPM3 { get; set; }
+        public int Torque { get; set; }
+        public int WOB { get; set; }
+    }
+
+    public struct NewBitLine
+    {
+        public NewBitLine(List<string> line)
+        {
+            Depth = double.Parse(line[0]);
+            Number = int.Parse(line[1]);
+            Size = line[2];
+            Model = line[3];
+            Comments = line[4];
+        }
+
+        public string Comments { get; set; }
+        public double Depth { get; set; }
+
+        public int expectedElements { get => 5; }
+        public string Model { get; set; }
+        public int Number { get; set; }
+
+        public string Size { get; set; }
+        public string ShowAll()
+        {
+            return $"{Depth}: Bit #{Number}; size {Size}; model {Model}.\nComments: \"{Comments}\"";
+        }
+    }
+
+    public struct PlotScaleLine
+    {
+        public PlotScaleLine(string[] line)
+        {
+            Depth = double.Parse(line[0]);
+            Unknown = int.Parse(line[1]);
+            CuttingsGas = int.Parse(line[2]);
+            DitchGas = int.Parse(line[3]);
+            DrillRate = int.Parse(line[4]);
+            FlowIn = int.Parse(line[5]);
+            FlowOut = int.Parse(line[6]);
+            GainLoss = int.Parse(line[7]);
+            PitVolume = int.Parse(line[8]);
+            PumpPressure = int.Parse(line[9]);
+            RPM = int.Parse(line[10]);
+            OilShows = int.Parse(line[11]);
+            SPM = int.Parse(line[12]);
+            Torque = int.Parse(line[13]);
+            WeightOnBit = int.Parse(line[14]);
+            Unknown2 = int.Parse(line[15]);
+            CuttingsGasOverscale = int.Parse(line[16]);
+            DitchGasOverscale = int.Parse(line[17]);
+            DrillRateOverscale = int.Parse(line[18]);
+            FlowInOverscale = int.Parse(line[19]);
+            FlowOutOverscale = int.Parse(line[20]);
+            GainLossOverscale = int.Parse(line[21]);
+            PitVolumeOverscale = int.Parse(line[22]);
+            PumpPressureOverscale = int.Parse(line[23]);
+            RPMOverscale = int.Parse(line[24]);
+            OilShowsOverscale = int.Parse(line[25]);
+            SPMOverscale = int.Parse(line[26]);
+            TorqueOverscale = int.Parse(line[27]);
+            WeightOnBitOverscale = int.Parse(line[28]);
+            Wetness = int.Parse(line[29]);
+            WetnessOverscale = int.Parse(line[30]);
+            Balance = int.Parse(line[31]);
+            BalanceOverscale = int.Parse(line[32]);
+            Character = int.Parse(line[33]);
+            CharacterOverscale = int.Parse(line[34]);
+            LinearChromatography = int.Parse(line[35]);
+            LinearChromatographyOverscale = int.Parse(line[36]);
+            Aux1 = int.Parse(line[37]);
+            Aux1Overscale = int.Parse(line[38]);
+            Aux2 = int.Parse(line[39]);
+            Aux2Overscale = int.Parse(line[40]);
+            Aux3 = int.Parse(line[41]);
+            Aux3Overscale = int.Parse(line[42]);
+            Aux4 = int.Parse(line[43]);
+            Aux4Overscale = int.Parse(line[44]);
+            Aux5 = int.Parse(line[45]);
+            Aux5Overscale = int.Parse(line[46]);
+            Aux6 = int.Parse(line[47]);
+            Aux6Overscale = int.Parse(line[48]);
+        }
+
+        public int Aux1 { get; private set; }
+        public int Aux1Overscale { get; private set; }
+        public int Aux2 { get; private set; }
+        public int Aux2Overscale { get; private set; }
+        public int Aux3 { get; private set; }
+        public int Aux3Overscale { get; private set; }
+        public int Aux4 { get; private set; }
+        public int Aux4Overscale { get; private set; }
+        public int Aux5 { get; private set; }
+        public int Aux5Overscale { get; private set; }
+        public int Aux6 { get; private set; }
+        public int Aux6Overscale { get; private set; }
+        public int Balance { get; private set; }
+        public int BalanceOverscale { get; private set; }
+        public int Character { get; private set; }
+        public int CharacterOverscale { get; private set; }
+        public int CuttingsGas { get; private set; }
+        public int CuttingsGasOverscale { get; private set; }
+        public double Depth { get; private set; }
+
+        public int DitchGas { get; private set; }
+        public int DitchGasOverscale { get; private set; }
+        public int DrillRate { get; private set; }
+        public int DrillRateOverscale { get; private set; }
+        public int FlowIn { get; private set; }
+        public int FlowInOverscale { get; private set; }
+        public int FlowOut { get; private set; }
+        public int FlowOutOverscale { get; private set; }
+        public int GainLoss { get; private set; }
+        public int GainLossOverscale { get; private set; }
+        public int LinearChromatography { get; private set; }
+        public int LinearChromatographyOverscale { get; private set; }
+        public int OilShows { get; private set; }
+        public int OilShowsOverscale { get; private set; }
+        public int PitVolume { get; private set; }
+        public int PitVolumeOverscale { get; private set; }
+        public int PumpPressure { get; private set; }
+        public int PumpPressureOverscale { get; private set; }
+        public int RPM { get; private set; }
+        public int RPMOverscale { get; private set; }
+        public int SPM { get; private set; }
+        public int SPMOverscale { get; private set; }
+        public int Torque { get; private set; }
+        public int TorqueOverscale { get; private set; }
+        public int Unknown { get; private set; }
+        public int Unknown2 { get; private set; }
+        public int WeightOnBit { get; private set; }
+        public int WeightOnBitOverscale { get; private set; }
+        public int Wetness { get; private set; }
+
+        public int WetnessOverscale { get; private set; }
+    }
+
+    public struct LithologyLine
+    {
+        public double Depth { get; set; }
+
+        public int Lithology1 { get; set; }
+
+        public int Lithology2 { get; set; }
+
+        public int Lithology3 { get; set; }
+
+        public int Lithology4 { get; set; }
+
+        public int Lithology5 { get; set; }
+
+        public int Lithology6 { get; set; }
+
+        public int Lithology7 { get; set; }
+
+        public int Lithology8 { get; set; }
+
+        public int Lithology9 { get; set; }
+
+        public int Lithology10 { get; set; }
+
+        public int? LithologyInterpreted { get; set; }
+
+        public LithologyLine(List<string> line)
+        {
+            Depth = double.Parse(line[0]);
+            Lithology1 = int.Parse(line[1]);
+            Lithology2 = int.Parse(line[2]);
+            Lithology3 = int.Parse(line[3]);
+            Lithology4 = int.Parse(line[4]);
+            Lithology5 = int.Parse(line[5]);
+            Lithology6 = int.Parse(line[6]);
+            Lithology7 = int.Parse(line[7]);
+            Lithology8 = int.Parse(line[8]);
+            Lithology9 = int.Parse(line[9]);
+            if (line.Count == 12)
+            {
+                Lithology10 = int.Parse(line[10]);
+                LithologyInterpreted = int.Parse(line[11]);
+            }
+            else
+            {
+                Lithology10 = int.Parse(line[10]);
+                LithologyInterpreted = null;
+            }
+
+        }
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class Program
+    {
+        static void Main(string[] args)
+        {
+            //var consuela = new ConsoleInterface();
+            //consuela.Header();
+            //// consuela.CompareDepths();
+            //consuela.ShowMenu();
+        }
+    }
+}
+
+﻿using System.Drawing;
+
+
+namespace HwlFileAnalyzer.Columns
+{
+    public class DepthColumn : IColumn
+    {
+        public DepthColumn(HwlData hwl)
+        {
+            Data = hwl.Depths;
+        }
+
+        public List<double> Data { get; set; }
+        public string HeaderName { get; set; } = "Depth";
+        public int Width { get; set; } = 5;
+        public int Position { get; set; } = 1;
+        public Color BackgroundColor { get; set; } = Color.LightGray;
+
+        public int NumOfFields => 1;
+
+        public List<string> HeaderItems => new List<string>() { "Depth" };
+
+        public string GetPlotLine(double depth)
+        {
+            return depth.ToString().PadRight(Width).Substring(0, Width);
+        }
+
+        public void PrintPlotLine(double depth)
+        {
+            Console.Write(depth.ToString().PadRight(Width).Substring(0, Width));
+        }
+
+        public void PrintHeaderItem(int i)
+        {
+            if (i < NumOfFields)
+            {
+                Color textColor = Color.Black;
+                Console.Write(HeaderItems[i].PadRight(Width).Substring(0, Width));
+            }
+            else Console.Write("".PadRight(Width));
+        }
+    }
+}
+
+﻿using System.Drawing;
+
+
+namespace HwlFileAnalyzer.Columns
+{
+    public class DescriptionColumn : IColumn
+    {
+        public DescriptionColumn(HwlData hwl)
+        {
+            Data = hwl.Descriptions;
+        }
+
+        public List<DescriptionLine> Data { get; }
+        public string Name { get; set; }
+        public string HeaderName { get; set; } = "Descriptions";
+        public int Width { get; set; } = 60;
+        public int Position { get; set; }
+        public Color BackgroundColor { get; set; } = Color.White;
+        public int NumOfFields => 1;
+
+
+        public List<string> HeaderItems => new List<string>() { "Descriptions" };
+
+        public string GetPlotLine(double depth)
+        {
+            if (!Data.Any(x => x.Depth == depth)) return "".PadRight(Width);
+            return Data.Find(x => x.Depth == depth).Description.PadRight(Width).Substring(0, Width);
+        }
+
+        public void PrintPlotLine(double depth)
+        {
+            if (!Data.Any(x => x.Depth == depth)) Console.Write("".PadRight(Width));
+            else
+            {
+                var desc = Data.Find(x => x.Depth == depth).Description;
+                if (desc.Length <= Width) Console.Write(desc.PadRight(Width).Substring(0, Width));
+                else
+                {
+                    Console.Write(desc.PadRight(Width - 3).Substring(0, Width - 3));
+                    Console.Write("...");
+                };
+            }
+        }
+
+        private Dictionary<double, List<string>> SplitDescription(DescriptionLine desc)
+        {
+            var depth = desc.Depth;
+            var text = desc.Description;
+            List<string> splitText = new List<string>();
+            for (int i = 1; i < text.Length; i++)
+            {
+                if (i % 50 == 0)
+                {
+                    splitText.Add(text.Substring(i - 50, 50));
+                }
+            }
+            if (text.Length > splitText.Count * 50) splitText.Add(text.Substring(splitText.Count * 50));
+            var dict = new Dictionary<double, List<string>>();
+            dict.Add(depth, splitText);
+            return dict;
+        }
+
+        public void PrintHeaderItem(int i)
+        {
+            if (i < NumOfFields)
+            {
+                Color textColor = Color.Black;
+                Console.Write(HeaderItems[i].PadRight(Width).Substring(0, Width));
+            }
+            else Console.Write("".PadRight(Width));
+        }
+    }
+}
+
+﻿using System.Drawing;
+
+
+namespace HwlFileAnalyzer.Columns
+{
+    interface IColumn
+    {
+        public string HeaderName { get; set; }
+        public int Width { get; }
+        public string GetPlotLine(double depth);
+        public int Position { get; set; }
+        public Color BackgroundColor { get; set; }
+        public int NumOfFields { get; }
+        public List<string> HeaderItems { get; }
+        public void PrintPlotLine(double depth);
+        public void PrintHeaderItem(int a);
+    }
+}
+
+﻿using System.Drawing;
+
+
+namespace HwlFileAnalyzer.Columns
+{
+    public class LithologyColumn : IColumn
+    {
+        public LithologyColumn(HwlData hwl)
+        {
+            Data = hwl.Lithology;
+
+        }
+
+        public string HeaderName { get; set; } = "Lithology";
+        public bool InterpretedEnabled { get; set; } = false;
+        public List<LithologyLine> Data { get; }
+        public string Plotline { get; private set; }
+        public int Width { get; set; } = 30;
+        public int Position { get; set; }
+        public Color BackgroundColor { get; set; } = Color.White;
+        public int NumOfFields => 1;
+        public List<string> HeaderItems => new List<string>() { "Lithology" };
+
+
+        public string GetPlotLine(double depth)
+        {
+            var lithLine = Data.Find(x => x.Depth == depth);
+            if (lithLine.Lithology1 == 0) return "".PadRight(Width);
+            var lithInts = new int[]
+            {
+                lithLine.Lithology1,
+                lithLine.Lithology2,
+                lithLine.Lithology3,
+                lithLine.Lithology4,
+                lithLine.Lithology5,
+                lithLine.Lithology6,
+                lithLine.Lithology7,
+                lithLine.Lithology8,
+                lithLine.Lithology9,
+                lithLine.Lithology10,
+            };
+            var lithString = string.Join(" ", lithInts);
+            return lithString.PadRight(Width).Substring(0, Width);
+        }
+
+        public void PrintPlotLine(double depth)
+        {
+            var lithLine = Data.Find(x => x.Depth == depth);
+            if (lithLine.Lithology1 == 0) Console.Write("".PadRight(Width));
+            else
+            {
+                var lithInts = new int[]
+                {
+                    lithLine.Lithology1,
+                    lithLine.Lithology2,
+                    lithLine.Lithology3,
+                    lithLine.Lithology4,
+                    lithLine.Lithology5,
+                    lithLine.Lithology6,
+                    lithLine.Lithology7,
+                    lithLine.Lithology8,
+                    lithLine.Lithology9,
+                    lithLine.Lithology10,
+                };
+                var lithString = string.Join(" ", lithInts);
+                Console.Write(lithString.PadRight(Width).Substring(0, Width));
+            }
+        }
+
+        public void PrintHeaderItem(int i)
+        {
+            if (i < NumOfFields)
+            {
+                Color textColor = Color.Black;
+                Console.Write(HeaderItems[i].PadRight(Width).Substring(0, Width));
+            }
+            else Console.Write("".PadRight(Width));
+        }
+    }
+}
+
+﻿using System.Drawing;
+
+namespace HwlFileAnalyzer.Columns
+{
+    public class ParameterColumn : IColumn
+    {
+        public Color BackgroundColor { get; set; } = Color.White;
+        public List<DrillingParameter> Fields { get; set; }
+        public string HeaderName { get; set; }
+        public int Position { get; set; }
+        public int fieldWidth => Width / Fields.Count;
+        public int NumOfFields => Fields.Count;
+
+        public int Width
+        {
+            get
+            {
+                if (Fields is null) return 7;
+                else return 7 * Fields.Count;
+            }
+        }
+        private List<string> headerItems;
+        List<string> IColumn.HeaderItems
+        {
+            get
+            {
+                if (headerItems is null)
+                {
+                    headerItems = new List<string>();
+                    foreach (var item in Fields)
+                    {
+                        headerItems.Add(item.DisplayName);
+                    }
+                    return headerItems;
+                }
+                else return headerItems;
+            }
+        }
+
+        public void AddParameter(DrillingParameter dp)
+        {
+            if (Fields is null) Fields = new List<DrillingParameter>();
+            if (!Fields.Contains(dp))
+            {
+                Fields.Add(dp);
+                dp.Column = Position;
+            }
+        }
+
+        public string GetPlotLine(double depth)
+        {
+            List<string> fieldList = new List<string>();
+            foreach (var dp in Fields)
+            {
+                if (!dp.Data.ContainsKey(depth)) return "".PadRight(Width);
+                Color textColor = dp.Color;
+                System.Console.WriteLine(dp.Data[depth].ToString().PadRight(fieldWidth).Substring(0, fieldWidth));
+                fieldList.Add(dp.Data[depth].ToString().PadRight(fieldWidth).Substring(0, fieldWidth));
+            }
+
+            return string.Join(string.Empty, fieldList);
+        }
+
+        public void PrintPlotLine(double depth)
+        {
+            foreach (var dp in Fields)
+            {
+                if (!dp.Data.ContainsKey(depth)) System.Console.WriteLine("".PadRight(Width));
+                Color textColor = dp.Color;
+                System.Console.Write(dp.Data[depth].ToString().PadRight(fieldWidth).Substring(0, fieldWidth));
+            }
+        }
+
+        public void PrintHeaderItem(int i)
+        {
+            if (i < NumOfFields)
+            {
+                Color textColor = Fields[i].Color;
+                Console.Write(Fields[i].DisplayName.PadRight(Width).Substring(0, Width));
+            }
+            else Console.Write("".PadRight(Width));
+        }
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Drawing;
+    using System.IO;
+    using System.Linq;
+    using Console = Colorful.Console;
+    public class ConsoleInterface
+    {
+
+        private HwlData hwl;
+        private HwlPlotter plotter;
+
+        public ConsoleInterface()
+        {
+            HwlFile = GetFile();
+            Importer import = new Importer(HwlFile);
+            hwl = import.ImportHWL();
+            plotter = new HwlPlotter(hwl);
+        }
+
+        private string HwlFile { get; set; }
+
+        public void Introduction()
+        {
+            Console.WriteAscii("Horizon Well Logging", Color.DarkOrange);
+            ShowWellInfo();
+        }
+
+        public static void SetAppearance()
+        {
+            Console.SetWindowSize(200, 50);
+            Console.Title = "HWL File Reader";
+            Console.BackgroundColor = Color.LightGray;
+            Console.ForegroundColor = Color.Black;
+            Console.Clear();
+        }
+
+        public void GetDepths()
+        {
+            System.Console.WriteLine();
+            Console.WriteLine("Top depth: " + hwl.Depths.Min() + "; Bottom depth: " + hwl.Depths.Max());
+            System.Console.WriteLine();
+            Console.Write("Pick a starting depth for parameters: ");
+            var topper = Console.ReadLine().ToLower();
+            if (topper == "top" || topper == "spud")
+            {
+                plotter.SelectedTop = hwl.TopDepth;
+            }
+            else plotter.SelectedTop = int.Parse(topper);
+            Console.Write("Pick an ending depth: ");
+            var botter = Console.ReadLine().ToLower();
+            if (botter == "bottom" || botter == "md")
+            {
+                plotter.SelectedBottom = hwl.BottomDepth;
+            }
+            else plotter.SelectedBottom = int.Parse(botter);
+            plotter.SetRange();
+            System.Console.WriteLine();
+        }
+
+        public string GetFile()
+        {
+            while (true)
+            {
+                Console.WriteLine("Please specify the file path");
+                string userInput = Console.ReadLine();
+                if (userInput == null)
+                {
+                    Console.WriteLine("You did not provide any text.");
+                    continue;
+                }
+
+                string givenPath = userInput.Trim('"');
+                if (File.Exists(givenPath))
+                {
+                    if (Path.GetExtension(givenPath).ToLower() == ".hwl")
+                    {
+                        return givenPath;
+                    }
+                    else
+                    {
+                        Console.WriteLine("The given file is not a proper HWL file.");
+                        continue;
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("This is not a proper file path.");
+                    continue;
+                }
+            }
+        }
+        public void Header()
+        {
+            System.Console.WriteLine();
+            System.Console.WriteLine("**************************************************");
+            Console.WriteLine(hwl.WellInfo.HeaderTitle);
+            Console.WriteLine(hwl.WellInfo.Company);
+            System.Console.WriteLine();
+            Console.WriteLine($"Logged by: ");
+            foreach (var item in hwl.WellInfo.Loggers)
+            {
+                Console.Write(item + "  ");
+            }
+
+            System.Console.WriteLine();
+            System.Console.WriteLine("**************************************************");
+            System.Console.WriteLine();
+            System.Console.WriteLine($"Number of TVD items: {(hwl.TVDs is null ? 0 : hwl.TVDs.Count)}");
+            System.Console.WriteLine($"Number of Casing Points: {(hwl.CasingPoints is null ? 0 : hwl.CasingPoints.Count)}");
+            System.Console.WriteLine($"Number of New Bits: {(hwl.NewBits is null ? 0 : hwl.NewBits.Count)}");
+            System.Console.WriteLine($"Number of Annotation: {hwl.Annotations.Count}");
+            System.Console.WriteLine($"Number of Abbreviations: {hwl.Abbreviations.Count}");
+            System.Console.WriteLine($"Number of LithSymbols: {hwl.LithSymbols.Count}");
+            System.Console.WriteLine($"Top Depth: {hwl.TopDepth}; Bottom Depth: {hwl.BottomDepth}");
+            System.Console.WriteLine($"Number of depths plotted: {hwl.Depths.Count}");
+            System.Console.WriteLine($"Number of Oil plot scale lines: {hwl.PlotScales.Count}");
+            System.Console.WriteLine($"Number of Descriptions: {hwl.Descriptions.Count}");
+        }
+
+        public void Menu()
+        {
+            while (true)
+            {
+                System.Console.WriteLine();
+                System.Console.WriteLine("Which do you wanna do");
+                System.Console.WriteLine($"1: View Plot");
+                System.Console.WriteLine($"2: View Stats");
+                System.Console.WriteLine($"3: View Descriptions");
+                System.Console.WriteLine($"4: View Annotations");
+                System.Console.WriteLine($"5: Well Info");
+                System.Console.WriteLine($"6: Show Casings");
+                System.Console.WriteLine($"7: Show New Bits");
+                System.Console.WriteLine($"8: Do the thing");
+                System.Console.WriteLine($"9: Test plot scales");
+                System.Console.WriteLine($"0: Exit");
+                System.Console.WriteLine();
+                var input = Console.ReadLine();
+                Console.Clear();
+                switch (input)
+                {
+                    case "1":
+                        GetDepths();
+                        PickPlots();
+                        System.Console.WriteLine($"Data plot of {hwl.WellInfo.HeaderTitle} from {plotter.SelectedTop} to {plotter.SelectedBottom}");
+                        List<string[]> plot = plotter.GetPlot(hwl.PlotteDrillingParameters);
+                        foreach (var line in plot)
+                        {
+                            foreach (var item in line)
+                            {
+                                Console.Write(item.PadRight(15));
+                            }
+
+                            Console.WriteLine();
+                        }
+
+                        break;
+                    case "2":
+                        GetDepths();
+                        System.Console.WriteLine($"Drilling statistics of {hwl.WellInfo.HeaderTitle} from {plotter.SelectedTop} to {plotter.SelectedBottom}");
+                        ShowCalcs();
+                        break;
+                    case "3":
+                        System.Console.WriteLine($"Drilling descriptions of {hwl.WellInfo.HeaderTitle} from {plotter.SelectedTop} to {plotter.SelectedBottom}");
+
+                        foreach (var item in hwl.Descriptions)
+                        {
+                            if (plotter.SelectedTop <= item.Depth && item.Depth <= plotter.SelectedBottom)
+                            {
+                                System.Console.WriteLine($"{item.Depth}: {item.Description}");
+                            }
+                        }
+
+                        break;
+                    case "4":
+                        GetDepths();
+                        System.Console.WriteLine($"Drilling annotations of {hwl.WellInfo.HeaderTitle} from {plotter.SelectedTop} to {plotter.SelectedBottom}");
+
+                        foreach (var item in hwl.Annotations)
+                        {
+                            //if (Plotter.SelectedTop <= item.Depth && item.Depth <= Plotter.SelectedBottom)
+                            {
+                                if (item.Depth >= plotter.SelectedTop && item.Depth <= plotter.SelectedBottom)
+                                    System.Console.WriteLine($"{item.Depth}: {item.Text}");
+                            }
+                        }
+
+                        break;
+                    case "5":
+                        Header();
+                        break;
+                    case "6":
+                        ShowCasings();
+                        break;
+                    case "7":
+                        ShowNewBits();
+                        break;
+                    case "8":
+                        GetDepths();
+                        //plotter.SetMDDefaults();
+                        plotter.GetMudLogLayout();
+                        PickPlots();
+                        plotter.PrintLineHeader();
+                        foreach (var depth in plotter.SelectedRange)
+                        {
+                            if (depth % 5 == 0)
+                            {
+                                Console.Write("|");
+                                plotter.PrintLine(depth);
+                                System.Console.WriteLine();
+                            }
+                            else continue;
+                        }
+                        System.Console.WriteLine();
+                        System.Console.WriteLine("Press any button to continue...");
+                        Console.Read();
+                        break;
+                    case "9":
+                        foreach (var item in hwl.DrillingParameters)
+                        {
+                            item.TestScales();
+                        }
+                        break;
+                    case "0":
+                        System.Console.WriteLine("Goodbye");
+                        Environment.Exit(0);
+                        break;
+
+                }
+            }
+
+        }
+
+        public void ShowCalcs()
+        {
+            var dpList = hwl.PlotteDrillingParameters;
+            System.Console.WriteLine();
+            Console.Write("Depth".PadRight(10));
+            foreach (var item in dpList)
+            {
+                Console.Write(item.DisplayName.PadRight(16).Substring(0, 16) + " ");
+            }
+
+            System.Console.WriteLine();
+            Console.Write("(ft)".PadRight(10));
+            foreach (var item in dpList)
+            {
+                Console.Write($"({item.UnitOfMeasurement})".PadRight(17).Substring(0, 17));
+            }
+
+            System.Console.WriteLine();
+            Console.Write("Min:".PadRight(10));
+            foreach (var item in dpList)
+            {
+                string dataPoint = plotter.Min(plotter.GetDpPlot(item)).ToString();
+                Console.Write(dataPoint.PadRight(17));
+            }
+
+            System.Console.WriteLine();
+            Console.Write("Max:".PadRight(10));
+            foreach (var item in dpList)
+            {
+                string dataPoint = plotter.Max(plotter.GetDpPlot(item)).ToString();
+                Console.Write(dataPoint.PadRight(17));
+            }
+
+            System.Console.WriteLine();
+            Console.Write("Avg:".PadRight(10));
+            foreach (var item in dpList)
+            {
+                string dataPoint = Math.Round(plotter.GetDpPlot(item).Average(), 0).ToString();
+                Console.Write(dataPoint.PadRight(17));
+            }
+
+            System.Console.WriteLine();
+            Console.Write("Non0Avg:".PadRight(10));
+            foreach (var item in dpList)
+            {
+                string dataPoint = plotter.No0Avg(plotter.GetDpPlot(item)).ToString();
+                Console.Write(dataPoint.PadRight(17));
+            }
+
+            System.Console.WriteLine();
+        }
+
+        public void ShowCasings()
+        {
+            if (hwl.CasingPoints is null)
+            {
+                System.Console.WriteLine($"{hwl.WellInfo.HeaderTitle} contains no recorded casing points.");
+                return;
+            }
+            foreach (var item in hwl.CasingPoints)
+            {
+                Console.Write($"{item.Depth.ToString()}: {item.Diameter} on {item.Date}");
+                Console.WriteLine();
+            }
+        }
+
+        public void ShowMenu()
+        {
+            SetAppearance();
+            Introduction();
+            Menu();
+        }
+
+        public void ShowNewBits()
+        {
+            if (hwl.NewBits is null)
+            {
+                System.Console.WriteLine($"{hwl.WellInfo.HeaderTitle} contains no recorded new bits.");
+                return;
+            }
+            foreach (var item in hwl.NewBits)
+            {
+                Console.Write($"{item.Depth.ToString("#,###")}ft: ".PadRight(10));
+                Console.Write($"bit #{item.Number}".PadRight(8));
+                Console.Write($"({item.Model})".PadRight(15));
+                Console.Write($"{item.Comments}");
+                System.Console.WriteLine();
+            }
+        }
+
+        public void ShowPlot()
+        {
+            //var startDepthPos = Plotter.SelectedTop - Hwl.Depths.Min() + 1;
+            //var endDepthPos = Plotter.SelectedBottom - Hwl.Depths.Min() + 1;
+            //Console.Write("Depth".PadRight(10));
+            //foreach (var item in Hwl.DrillingParameters)
+            //{
+            //    Console.Write(item.DisplayName.PadRight(16).Substring(0, 16) + " ");
+            //}
+
+            System.Console.WriteLine();
+            Console.Write("(ft)".PadRight(10));
+            foreach (var item in hwl.DrillingParameters)
+            {
+                Console.Write($"({item.UnitOfMeasurement})".PadRight(17).Substring(0, 17));
+            }
+
+            Console.WriteLine();
+            foreach (var i in plotter.SelectedRange)
+            {
+                string printedDepth = i.ToString();
+                Console.Write(printedDepth.PadRight(10));
+                foreach (var item in hwl.DrillingParameters)
+                {
+                    var printedString = item.Data[i].ToString();
+                    Console.Write(printedString.PadRight(17));
+                }
+
+                Console.WriteLine();
+            }
+        }
+
+        public void ShowWellInfo()
+        {
+            for (int i = 0; i < 130; i++) { Console.Write('*'); }
+            Console.WriteLine();
+
+            Console.Write("Well: ".PadLeft(15));
+            Console.Write(hwl.WellInfo.HeaderTitle.ToUpper().PadRight(50));
+
+            Console.Write("Contractor: ".PadLeft(15));
+            Console.Write(hwl.WellInfo.Contractor.PadRight(15));
+
+            Console.Write("Spud Date:".PadLeft(15));
+            Console.Write(hwl.WellInfo.SpudDate.PadRight(20));
+
+            Console.WriteLine();
+
+            Console.Write("Company: ".PadLeft(15));
+            Console.Write(hwl.WellInfo.Company.PadRight(50));
+
+            Console.Write("Rig: ".PadLeft(15));
+            Console.Write(hwl.WellInfo.Rig.PadRight(15));
+
+            Console.Write("Logging Start:".PadLeft(15));
+            Console.Write(hwl.WellInfo.StartDate.PadRight(20));
+
+            Console.WriteLine();
+
+            Console.Write("API: ".PadLeft(15));
+            Console.Write(hwl.WellInfo.API.PadRight(50));
+
+            Console.Write("Field: ".PadLeft(15));
+            Console.Write(hwl.WellInfo.Field.PadRight(15));
+
+            Console.Write("Logging End: ".PadLeft(15));
+            Console.Write(hwl.WellInfo.EndDate.PadRight(20));
+
+            Console.WriteLine();
+            for (int i = 0; i < 130; i++) { Console.Write('*'); }
+            Console.WriteLine();
+        }
+
+        private void PickPlots()
+        {
+            System.Console.WriteLine();
+            System.Console.WriteLine("By default, all fields which contain any non-zero data are enabled.");
+            while (true)
+            {
+                System.Console.WriteLine("These fields are currently enabled:");
+                System.Console.WriteLine();
+                for (int i = 0; i < hwl.PlotteDrillingParameters.Count; i++)
+                {
+                    Console.Write($"{i}: {hwl.PlotteDrillingParameters[i].DisplayName}".PadRight(25).Substring(0, 25));
+                    if (i % 5 == 0 && i != 0) System.Console.WriteLine();
+                }
+                System.Console.WriteLine();
+                System.Console.WriteLine("Input the number of any field (one at a time) that you would like to disable.\nAlternatively, type 'next' to view disabled plots, 'none' to disable all plots, 'all' to enable all plots, or 'done' to go straight to the plots with no more changes.");
+                System.Console.WriteLine();
+                var choice = Console.ReadLine();
+                if (int.TryParse(choice, out int indexchoice))
+                {
+                    try
+                    {
+                        hwl.PlotteDrillingParameters[indexchoice].PlotEnabled = false;
+                        continue;
+                    }
+                    catch (Exception)
+                    {
+                        System.Console.WriteLine("Error: Not a valid entry");
+                        continue;
+                    }
+                }
+                else if (choice.ToLower() == "next") break;
+                else if (choice.ToLower() == "done") return;
+                else if (choice.ToLower() == "none")
+                {
+                    foreach (var item in hwl.DrillingParameters)
+                    {
+                        item.PlotEnabled = false;
+                    }
+                    break;
+                }
+                else continue;
+            }
+            while (true)
+            {
+                System.Console.WriteLine();
+                System.Console.WriteLine("These fields are currently disabled:");
+                System.Console.WriteLine();
+                for (int i = 0; i < hwl.UnplottedDrillingParameters.Count; i++)
+                {
+                    Console.Write($"{i}: {hwl.UnplottedDrillingParameters[i].DisplayName}".PadRight(25).Substring(0, 25));
+                    if (i % 5 == 0 && i != 0) System.Console.WriteLine();
+                }
+                System.Console.WriteLine();
+                System.Console.WriteLine("Input the number of any field (one at a time) that you would like to enable.\nAlternatively, type 'none' to disable all plots, 'all' to enable all plots, or 'done' to go straight to the plots with no more changes.");
+                System.Console.WriteLine();
+                var choice = Console.ReadLine();
+                if (int.TryParse(choice, out int indexchoice))
+                {
+                    try
+                    {
+                        hwl.UnplottedDrillingParameters[indexchoice].PlotEnabled = true;
+                        continue;
+                    }
+                    catch (Exception)
+                    {
+                        System.Console.WriteLine("Error: Not a valid entry");
+                        continue;
+                    }
+                }
+                else if (choice.ToLower() == "next") break;
+                else continue;
+            }
+        }
+    }
+}
+﻿using HWLClassLibrary.Data_Service;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace HwlFileAnalyzer
+{
+    public interface IHwlDataService
+    {
+        HwlData HwlData { get; set; }
+        string FileContent { get; set; }
+        Importer Importer { get; set; }
+        public List<ScaleWarning> ScaleWarnings { get; set; }
+    }
+
+    public class HwlDataService : IHwlDataService
+    {
+        public HwlData HwlData { get; set; }
+        public string FileContent { get; set; }
+        public Importer Importer { get; set; }
+        public List<ScaleWarning> ScaleWarnings { get; set; } = new List<ScaleWarning>(); // Initialize ScaleWarnings with an empty list
+    }
+}
+
+﻿using HWLClassLibrary.Data_Service;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace HwlFileAnalyzer
+{
+
+}
+
+﻿using HwlFileAnalyzer;
+
+namespace HWLClassLibrary.Data_Service;
+
+public class ScaleWarning
+{
+    public DrillingParameter Parameter { get; set; }
+    public string Message { get; set; }
+    public double SuggestedScale { get; set; }
+    public double SuggestedOverscale { get; set; }
+}
+﻿using System.Drawing;
+using System.Reflection.Metadata;
+using HWLClassLibrary.Data_Service;
+
+namespace HwlFileAnalyzer;
+
+public abstract class DrillingParameter
+{
+    protected Dictionary<double, int> data;
+
+    protected HwlData hwl;
+
+    protected bool plotEnabled;
+
+    public int SuggestedScale
+    {
+        get
+        {
+            if (plotEnabled) return (int)Math.Ceiling((double)Data.Values.Max() / 50) * 50;
+            else return 0;
+        }
+        set => SuggestedScale = value;
+    }
+
+    public virtual int SuggestedOverscale => SuggestedScale * 2;
+
+    public DrillingParameter(HwlData hwlData)
+    {
+        hwl = hwlData;
+        if (PlotLinePosition.HasValue)
+        {
+            SetPlotData();
+            if (Data.Values.Any(i => i != 0)) PlotEnabled = true;
+            else plotEnabled = false;
+        }
+
+        if (hwl.Type == "OG" && OGPlotScalePosition.HasValue) PlotScales = GetPlotScales();
+        if (hwl.Type == "OG" && OGPlotOverscalePosition.HasValue) PlotOverscales = SetPlotOverscales();
+        if (hwl.Type == "GEO" && GeoHeaderScalePosition.HasValue)
+            HeaderScale = hwl.HeaderScales[HeaderScalePosition.Value];
+        //if (hwl.Type == "GEO" && GeoHeaderOverscalePosition.HasValue)
+        //    HeaderOverscale = hwl.HeaderScales[HeaderOverscalePosition.Value];
+
+
+        if (ColorPosition.HasValue) Color = ColorTranslator.FromWin32(hwl.Colors[ColorPosition.Value]);
+
+        if (DisplayNamePosition.HasValue) DisplayName = hwl.DisplayNames[DisplayNamePosition.Value];
+        else DisplayName = GetType().Name;
+
+        if (LineStylePosition.HasValue) LineStyle = int.Parse(hwl.LineStyles[LineStylePosition.Value]);
+        else LineStyle = 0;
+    }
+
+    protected virtual int? OGColorPosition { get; }
+    protected virtual int? GeoColorPosition { get; }
+    public int? ColorPosition => hwl.Type == "OG" ? OGColorPosition : GeoColorPosition;
+    public Color Color { get; set; } = Color.Black;
+
+    protected virtual int? OGColorOverscalePosition { get; }
+    protected virtual int? GeoColorOverscalePosition { get; }
+    public int? ColorOverscalePosition => hwl.Type == "OG" ? OGColorOverscalePosition : GeoColorOverscalePosition;
+
+    protected virtual int? OGDisplayNamePosition { get; }
+    protected virtual int? GeoDisplayNamePosition { get; }
+    public int? DisplayNamePosition => hwl.Type == "OG" ? OGDisplayNamePosition : GeoDisplayNamePosition;
+    public string DisplayName { get; set; }
+
+    protected virtual int? OGDisplayNameOverscalePosition { get; }
+    public int? DisplayNameOverscale { get; }
+
+    protected virtual int? OGLineStylesPosition { get; }
+    protected virtual int? GeoLineStylesPosition { get; }
+    public int? LineStylePosition => hwl.Type == "OG" ? OGLineStylesPosition : GeoLineStylesPosition;
+    public int LineStyle { get; set; }
+
+    protected virtual int? OGHeaderScalePosition { get; }
+    protected virtual int? GeoHeaderScalePosition { get; } = null;
+    public int? HeaderScalePosition => GeoHeaderScalePosition;
+    public int? HeaderScale { get; set; }
+
+    protected virtual int? OGHeaderOverscalePosition { get; }
+    protected virtual int? GeoHeaderOverscalePosition { get; } = null;
+    public int? HeaderOverscalePosition => GeoHeaderOverscalePosition;
+    public int? HeaderOverscale { get; set; }
+
+    protected virtual int? GeoPlotLinePosition { get; }
+    protected virtual int? OGPlotLinePosition { get; }
+    public int? PlotLinePosition => hwl.Type == "OG" ? OGPlotLinePosition : GeoPlotLinePosition;
+
+    public virtual int? OGPlotScalePosition { get; }
+    public Dictionary<double, int> PlotScales { get; }
+
+    public virtual int? OGPlotOverscalePosition { get; }
+    public Dictionary<double, int> PlotOverscales { get; }
+
+    public virtual bool PlotEnabled
+    {
+        get => plotEnabled;
+        set => plotEnabled = value;
+    }
+
+    public virtual Dictionary<double, int> Data
+    {
+        get => data;
+        private set => data = value;
+    }
+
+    public virtual string ShortName { get; }
+
+    public virtual string UnitOfMeasurement => "Units";
+
+    protected virtual bool HasUniqueParser => false;
+
+    public virtual int Column { get; set; } = 7;
+
+    public virtual bool InvertedScale { get; set; }
+
+    public List<int> GetPlotData()
+    {
+        var plot = new List<int>();
+        foreach (var item in hwl.DrillingParameterData) plot.Add(int.Parse(item[PlotLinePosition.Value]));
+
+        return plot;
+    }
+
+    private Dictionary<double, int> GetPlotScales()
+    {
+        var dict = new Dictionary<double, int>();
+        foreach (var item in hwl.PlotScales)
+            dict.Add(double.Parse(item[0]), int.Parse(item[OGPlotScalePosition.Value]));
+
+        return dict;
+    }
+
+    protected virtual void SetPlotData()
+    {
+        if (data is null) data = new Dictionary<double, int>();
+        else data.Clear();
+        foreach (var item in hwl.DrillingParameterData)
+            if (string.IsNullOrEmpty(item[PlotLinePosition.Value])) continue;
+            else data.Add(double.Parse(item[0]), int.Parse(item[PlotLinePosition.Value]));
+    }
+
+    private Dictionary<double, int> SetPlotOverscales()
+    {
+        var dict = new Dictionary<double, int>();
+        foreach (var item in hwl.PlotScales)
+            dict.Add(double.Parse(item[0]), int.Parse(item[OGPlotOverscalePosition.Value]));
+
+        return dict;
+    }
+
+
+    public List<ScaleWarning> TestPlotScales()
+    {
+        var warnings = new List<ScaleWarning>();
+        var issueCount = 0;
+        if (hwl.Type == "OG" && plotEnabled)
+            if (PlotScales.Count == PlotOverscales.Count)
+                // Require equal count.
+                foreach (var pair in PlotScales)
+                {
+                    int overvalue;
+                    if (PlotOverscales.TryGetValue(pair.Key, out overvalue))
+                    {
+                        if (pair.Value <= 0)
+                        {
+                            issueCount += 1;
+                            warnings.Add(new ScaleWarning
+                            {
+                                Parameter = this,
+                                Message =
+                                    $"Warning: segment scale at depth {pair.Key} for field {DisplayName}; Scale value is {pair.Value} which should be greater than 0."
+                            });
+                        }
+                        else if (overvalue <= pair.Value)
+                        {
+                            issueCount += 1;
+                            warnings.Add(new ScaleWarning
+                            {
+                                Parameter = this,
+                                Message =
+                                    $"Warning: segment overscale at depth {pair.Key} for field {DisplayName}; Scale value is {pair.Value} while Overscale value is {overvalue}."
+                            });
+                        }
+                    }
+                }
+
+        return warnings;
+    }
+
+    public List<ScaleWarning> TestHeaderScales()
+    {
+        var warnings = new List<ScaleWarning>();
+
+        if (hwl.Type.ToUpper() == "GEO")
+            if (HeaderScale.HasValue)
+                if (HeaderScale <= 0)
+                {
+                    var scaleWarning = new ScaleWarning
+                    {
+                        Parameter = this,
+                        Message =
+                            $"Warning: header scale for field {DisplayName}; Scale value is {HeaderScale} which is less than or below 0. The recommended value is {SuggestedScale}",
+                        SuggestedScale = this.SuggestedScale,
+                        SuggestedOverscale = this.SuggestedOverscale
+                    };
+
+                    warnings.Add(scaleWarning);
+                }
+
+        return warnings;
+    }
+
+    public void ApplySuggestedScales()
+    {
+        if (hwl.Type.ToUpper() == "GEO")
+        {
+            if (HeaderScalePosition.HasValue)
+            {
+                HeaderScale = SuggestedScale;
+                HeaderOverscale = SuggestedOverscale;
+                hwl.HeaderScales[(int)HeaderScalePosition] = (int)HeaderScale;
+            }
+            else
+            {
+                // Log or handle the case when HeaderScalePosition is null
+                Console.WriteLine($"HeaderScalePosition is null for parameter {DisplayName}");
+            }
+        }
+        else if (hwl.Type.ToUpper() == "OG")
+        {
+            // Update all PlotScales and PlotOverscales values to the suggested scale
+            foreach (var key in PlotScales.Keys.ToList())
+            {
+                PlotScales[key] = SuggestedScale;
+                PlotOverscales[key] = SuggestedOverscale;
+            }
+
+            // Update all hwl.PlotScales values to the suggested scale
+            for (int row = 0; row < hwl.PlotScales.Count; row++)
+            {
+                if (hwl.PlotScales[row].Count > (int)OGPlotScalePosition)
+                {
+                    hwl.PlotScales[row][(int)OGPlotScalePosition] = SuggestedScale.ToString();
+                }
+                else
+                {
+                    // Log the out-of-range position or handle the error as needed
+                    Console.WriteLine($"OGPlotScalePosition {(int)OGPlotScalePosition} is out of range for row {row}");
+                }
+            }
+        }
+    }
+
+
+
+
+}
+﻿namespace HwlFileAnalyzer
+{
+    public class Aux1 : Auxiliary
+    {
+        public Aux1(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+
+        //Fully filled and accurate as of 7/20/2020
+        public override int Column => 0;
+        public override string ShortName => "Aux1";
+        protected override int? GeoColorPosition => 26;
+        protected override int? GeoDisplayNamePosition => 39;
+        protected override int? GeoHeaderOverscalePosition => 14;
+        protected override int? GeoHeaderScalePosition => 13;
+        protected override int? GeoLineStylesPosition => 18;
+        protected override int? GeoPlotLinePosition => 45;
+        protected override int? OGColorPosition => 21;
+        protected override int? OGDisplayNamePosition => 20;
+        protected override int? OGLineStylesPosition => 20;
+        protected override int? OGPlotLinePosition => 34;
+        public override int? OGPlotOverscalePosition => 38;
+        public override int? OGPlotScalePosition => 37;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class Aux2 : Auxiliary
+    {
+        public Aux2(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+
+        //Fully filled and accurate as of 7/20/2020
+        public override int Column => 4;
+        public override string ShortName => "Aux 2";
+        protected override int? GeoColorPosition => 27;
+        protected override int? GeoDisplayNamePosition => 40;
+        protected override int? GeoHeaderOverscalePosition => 16;
+        protected override int? GeoHeaderScalePosition => 15;
+        protected override int? GeoLineStylesPosition => 19;
+        protected override int? GeoPlotLinePosition => 46;
+        protected override int? OGColorPosition => 22;
+        protected override int? OGDisplayNamePosition => 21;
+        protected override int? OGLineStylesPosition => 21;
+        protected override int? OGPlotLinePosition => 35;
+        public override int? OGPlotOverscalePosition => 40;
+        public override int? OGPlotScalePosition => 39;
+    }
+}
+﻿namespace HwlFileAnalyzer
+{
+    public class Aux3 : Auxiliary
+    {
+        public Aux3(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+
+        //Fully filled and accurate as of 7/20/2020
+        public override int Column => 7;
+        public override string ShortName => "Aux3";
+        protected override int? GeoColorPosition => 28;
+        protected override int? GeoDisplayNamePosition => 41;
+        protected override int? GeoHeaderOverscalePosition => 18;
+        protected override int? GeoHeaderScalePosition => 17;
+        protected override int? GeoLineStylesPosition => 20;
+        protected override int? GeoPlotLinePosition => 47;
+        protected override int? OGColorPosition => 23;
+        protected override int? OGDisplayNamePosition => 22;
+        protected override int? OGLineStylesPosition => 22;
+        protected override int? OGPlotLinePosition => 36;
+        public override int? OGPlotOverscalePosition => 42;
+        public override int? OGPlotScalePosition => 41;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class Aux4 : Auxiliary
+    {
+        public Aux4(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+
+        //Fully filled and accurate as of 7/20/2020
+        public override int Column => 0;
+        public override string ShortName => "Aux4";
+        protected override int? GeoColorPosition => 29;
+        protected override int? GeoDisplayNamePosition => 42;
+        protected override int? GeoHeaderOverscalePosition => 20;
+        protected override int? GeoHeaderScalePosition => 19;
+        protected override int? GeoLineStylesPosition => 21;
+        protected override int? GeoPlotLinePosition => 48;
+        protected override int? OGColorPosition => 24;
+        protected override int? OGDisplayNamePosition => 24;
+        protected override int? OGLineStylesPosition => 23;
+        protected override int? OGPlotLinePosition => 37;
+        public override int? OGPlotOverscalePosition => 44;
+        public override int? OGPlotScalePosition => 43;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class Aux5 : Auxiliary
+    {
+        public Aux5(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+
+        //Fully filled and accurate as of 7/20/2020
+        public override int Column => 4;
+        public override string ShortName => "Aux5";
+        protected override int? GeoColorPosition => 30;
+        protected override int? GeoDisplayNamePosition => 43;
+        protected override int? GeoHeaderOverscalePosition => 22;
+        protected override int? GeoHeaderScalePosition => 21;
+        protected override int? GeoLineStylesPosition => 22;
+        protected override int? GeoPlotLinePosition => 49;
+        protected override int? OGColorPosition => 25;
+        protected override int? OGDisplayNamePosition => 25;
+        protected override int? OGLineStylesPosition => 24;
+        protected override int? OGPlotLinePosition => 38;
+        public override int? OGPlotOverscalePosition => 46;
+        public override int? OGPlotScalePosition => 45;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class Aux6 : Auxiliary
+    {
+        public Aux6(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+
+        //Fully filled and accurate as of 7/20/2020
+        public override int Column => 4;
+        public override string ShortName => "Aux6";
+        protected override int? GeoColorPosition => 31;
+        protected override int? GeoDisplayNamePosition => 44;
+        protected override int? GeoHeaderOverscalePosition => 24;
+        protected override int? GeoHeaderScalePosition => 23;
+        protected override int? GeoLineStylesPosition => 23;
+        protected override int? GeoPlotLinePosition => 50;
+        protected override int? OGColorPosition => 26;
+        protected override int? OGDisplayNamePosition => 26;
+        protected override int? OGLineStylesPosition => 25;
+        protected override int? OGPlotLinePosition => 39;
+        public override int? OGPlotOverscalePosition => 48;
+        public override int? OGPlotScalePosition => 47;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public abstract class Auxiliary : DrillingParameter
+    {
+        public Auxiliary(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+
+        private Dictionary<double, double> auxdata;
+
+        //public override Dictionary<double, int> Data { get
+        //    {
+        //        var newdata = new Dictionary<double, int>();
+        //        foreach (var item in auxdata)
+        //        {
+        //            int newvalue = Convert.ToInt32(item.Value);
+        //            newdata.Add(item.Key, newvalue);
+        //        }
+        //        return newdata;
+        //    } }
+
+        protected override void SetPlotData()
+        {
+            if (auxdata is null) auxdata = new Dictionary<double, double>();
+            else auxdata.Clear();
+            if (data is null) data = new Dictionary<double, int>();
+            else data.Clear();
+            foreach (var item in hwl.DrillingParameterData)
+            {
+                if (string.IsNullOrEmpty(item[PlotLinePosition.Value])) continue;
+                else
+                {
+                    int x;
+                    if (int.TryParse(item[PlotLinePosition.Value], out x))
+                    {
+                        auxdata.Add(double.Parse(item[0]), double.Parse(item[PlotLinePosition.Value]));
+                        data.Add(double.Parse(item[0]), x);
+                    }
+                    else
+                    {
+                        auxdata.Add(double.Parse(item[0]), double.Parse(item[PlotLinePosition.Value]));
+                        data.Add(double.Parse(item[0]), Convert.ToInt32(double.Parse(item[PlotLinePosition.Value])));
+                    }
+
+                }
+
+            }
+        }
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class Balance : DrillingParameter
+    {
+        public Balance(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+
+        //Fully filled and accurate as of 7/20/2020
+        protected override int? OGHeaderScalePosition => 15;
+        protected override int? OGHeaderOverscalePosition => 16;
+        public override bool PlotEnabled => false;
+        //Unusual OGPlotScale and Overscale: Over fixed at 200
+        public override int? OGPlotScalePosition => 31;
+        public override int? OGPlotOverscalePosition => 32;
+
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class C1 : Chromatography
+    {
+        public C1(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+
+        //Fully filled and accurate as of 7/20/2020
+        public override int Column => 5;
+        public override string ShortName => "C1";
+        public override string UnitOfMeasurement => "PPM";
+        protected override int? GeoPlotLinePosition => 19;
+        protected override int? OGColorPosition => 7;
+        protected override int? OGDisplayNamePosition => 7;
+        protected override int? OGLineStylesPosition => 5;
+        protected override int? OGPlotLinePosition => 4;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class C2 : Chromatography
+    {
+        public C2(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+
+        //Fully filled and accurate as of 7/20/2020
+        public override int Column => 5;
+        public override string ShortName => "C2";
+        public override string UnitOfMeasurement => "PPM";
+        protected override int? GeoPlotLinePosition => 20;
+        protected override int? OGColorPosition => 6;
+        protected override int? OGDisplayNamePosition => 6;
+        protected override int? OGLineStylesPosition => 6;
+        protected override int? OGPlotLinePosition => 5;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class C3 : Chromatography
+    {
+        public C3(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+
+        //Fully filled and accurate as of 7/20/2020
+        public override int Column => 5;
+        public override string ShortName => "C3";
+        public override string UnitOfMeasurement => "PPM";
+        protected override int? GeoPlotLinePosition => 21;
+        protected override int? OGColorPosition => 9;
+        protected override int? OGDisplayNamePosition => 9;
+        protected override int? OGLineStylesPosition => 7;
+        protected override int? OGPlotLinePosition => 6;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class C4 : Chromatography
+    {
+        public C4(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+
+        //Fully filled and accurate as of 7/20/2020
+        public override int Column => 5;
+        public override string ShortName => "C4";
+        public override string UnitOfMeasurement => "PPM";
+        protected override int? GeoPlotLinePosition => 20;
+        protected override int? OGColorPosition => 0;
+        protected override int? OGDisplayNamePosition => 0;
+        protected override int? OGLineStylesPosition => 8;
+        protected override int? OGPlotLinePosition => 7;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class C5 : Chromatography
+    {
+        public C5(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+
+        //Fully filled and accurate as of 7/20/2020
+        public override int Column => 5;
+        public override string ShortName => "C5";
+        public override string UnitOfMeasurement => "PPM";
+        protected override int? GeoPlotLinePosition => 23;
+        protected override int? OGColorPosition => 8;
+        protected override int? OGDisplayNamePosition => 8;
+        protected override int? OGLineStylesPosition => 9;
+        protected override int? OGPlotLinePosition => 9;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    class Character : DrillingParameter
+    {
+        public Character(HwlData hwlData) : base(hwlData) { }
+
+        protected override int? OGHeaderOverscalePosition => 18;
+        protected override int? OGHeaderScalePosition => 17;
+        //Unusual OGPlotscale and Overscale = input * 10
+        public override int? OGPlotOverscalePosition => 34;
+        public override int? OGPlotScalePosition => 33;
+        public override bool PlotEnabled => false;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public abstract class Chromatography : DrillingParameter
+    {
+        public Chromatography(HwlData hwlData) : base(hwlData) { }
+
+        public override int? OGPlotScalePosition => 1;
+        public override int? OGPlotOverscalePosition => 15;
+        public override bool PlotEnabled => false;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    class LinearChromatography : DrillingParameter
+    {
+        public LinearChromatography(HwlData hwlData) : base(hwlData) { }
+
+        protected override int? OGHeaderOverscalePosition => 20;
+        protected override int? OGHeaderScalePosition => 19;
+        public override int? OGPlotScalePosition => 35;
+        public override int? OGPlotOverscalePosition => 36;
+        public override bool PlotEnabled => false;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class Wetness : DrillingParameter
+    {
+        public Wetness(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+
+        //Fully filled and accurate as of 7/20/2020
+        protected override int? OGHeaderScalePosition => 13;
+        protected override int? OGHeaderOverscalePosition => 14;
+        public override bool PlotEnabled => false;
+        //Unusual OGPlotScale and Overscale: Over fixed at 200
+        public override int? OGPlotScalePosition => 29;
+        public override int? OGPlotOverscalePosition => 30;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class DrillRate : DrillingParameter
+    {
+        public DrillRate(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+        //Fully filled and accurate as of 7/19/2020
+        public override int Column => 0;
+        public override string ShortName => "ROP";
+        public override string UnitOfMeasurement => "Ft/Hr";
+        protected override int? GeoColorPosition => 0;
+        protected override int? GeoDisplayNamePosition => 2;
+        protected override int? GeoHeaderScalePosition => 0;
+        protected override int? GeoLineStylesPosition => 1;
+        protected override int? GeoPlotLinePosition => 1;
+        protected override int? OGColorPosition => 4;
+        protected override int? OGDisplayNameOverscalePosition => 5;
+        protected override int? OGDisplayNamePosition => 4;
+        protected override int? OGHeaderScalePosition => 0;
+        protected override int? OGLineStylesPosition => 1;
+        protected override int? OGPlotLinePosition => 1;
+        public override int? OGPlotOverscalePosition => 18;
+        public override int? OGPlotScalePosition => 4;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class WOB : DrillingParameter
+    {
+        public WOB(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+
+        //Fully filled and accurate as of 7/19/2020
+        public override int Column => 0;
+        public override string ShortName => "WOB";
+        public override string UnitOfMeasurement => "Klbs";
+        protected override int? GeoColorPosition => 1;
+        protected override int? GeoDisplayNamePosition => 4;
+        protected override int? GeoHeaderScalePosition => 1;
+        protected override int? GeoLineStylesPosition => 2;
+        protected override int? GeoPlotLinePosition => 2;
+        protected override int? OGColorPosition => 11;
+        protected override int? OGDisplayNamePosition => 10;
+        protected override int? OGHeaderScalePosition => 1;
+        protected override int? OGLineStylesPosition => 2;
+        protected override int? OGPlotLinePosition => 2;
+        public override int? OGPlotOverscalePosition => 28;
+        public override int? OGPlotScalePosition => 14;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class FlowIn : DrillingParameter
+    {
+        public FlowIn(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+
+        //Fully filled and accurate as of 7/19/2020
+        public override int Column => 5;
+        public override string ShortName => "Flow In";
+        public override string UnitOfMeasurement => "ft^3/min";
+        protected override int? GeoColorPosition => 21;
+        protected override int? GeoDisplayNamePosition => 31;
+        protected override int? GeoHeaderScalePosition => 8;
+        protected override int? GeoLineStylesPosition => 12;
+        protected override int? GeoPlotLinePosition => 40;
+        protected override int? OGColorPosition => 15;
+        protected override int? OGDisplayNamePosition => 14;
+        protected override int? OGHeaderScalePosition => 7;
+        protected override int? OGLineStylesPosition => 14;
+        protected override int? OGPlotLinePosition => 27;
+        public override int? OGPlotOverscalePosition => 19;
+        public override int? OGPlotScalePosition => 5;
+    }
+}
+﻿namespace HwlFileAnalyzer
+{
+    public class FlowOut : DrillingParameter
+    {
+        public FlowOut(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+
+        //Fully filled and accurate as of 7/19/2020
+        public override int Column => 5;
+        public override string ShortName => "Flow Out";
+        public override string UnitOfMeasurement => "%";
+        protected override int? GeoColorPosition => 22;
+        protected override int? GeoDisplayNamePosition => 32;
+        protected override int? GeoHeaderScalePosition => 9;
+        protected override int? GeoLineStylesPosition => 13;
+        protected override int? GeoPlotLinePosition => 41;
+        protected override int? OGColorPosition => 16;
+        protected override int? OGDisplayNamePosition => 15;
+        protected override int? OGHeaderScalePosition => 8;
+        protected override int? OGLineStylesPosition => 15;
+        protected override int? OGPlotLinePosition => 28;
+        public override int? OGPlotOverscalePosition => 20;
+        public override int? OGPlotScalePosition => 6;
+    }
+}
+
+﻿namespace HwlFileAnalyzer.DrillingParameters.Gases
+{
+    class CO2 : DrillingParameter
+    {
+        public CO2(HwlData hwlData) : base(hwlData) { }
+
+        //Filled out and accurate as of 07/21/2020
+        public override string ShortName => "CO2";
+        protected override int? GeoColorPosition => 2;
+        protected override int? GeoDisplayNamePosition => 6;
+        protected override int? GeoHeaderScalePosition => 2;
+        protected override int? GeoLineStylesPosition => 3;
+        protected override int? GeoPlotLinePosition => 14;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class CuttingsGas : DrillingParameter
+    {
+        public CuttingsGas(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+
+        //Fully filled and accurate as of 7/20/2020
+        private Dictionary<double, int> cuttingsData;
+        public override int Column => 4;
+        public override string ShortName => "Cuttings";
+        public override string UnitOfMeasurement => "Units";
+        protected override int? OGColorPosition => 1;
+        protected override int? OGDisplayNamePosition => 1;
+        protected override int? OGHeaderScalePosition => 4;
+        protected override int? OGLineStylesPosition => 4;
+        protected override int? OGPlotLinePosition => 12;
+        public override int? OGPlotOverscalePosition => 16;
+        public override int? OGPlotScalePosition => 2;
+        public override bool PlotEnabled => false;
+
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+
+{
+    public class DitchGas : DrillingParameter
+    {
+        public DitchGas(HwlData hwlData) : base(hwlData) { }
+
+        //Fully filled and accurate as of 7/19/2020
+        public override string ShortName => "Ditch Gas";
+        protected override int? GeoColorPosition => 3;
+        protected override int? GeoDisplayNamePosition => 7;
+        protected override int? GeoHeaderScalePosition => 3;
+        protected override int? GeoLineStylesPosition => 3;
+        protected override int? GeoPlotLinePosition => 16;
+        protected override int? OGColorOverscalePosition => 3;
+        protected override int? OGColorPosition => 2;
+        protected override int? OGDisplayNamePosition => 2;
+        protected override int? OGHeaderScalePosition => 3;
+        protected override int? OGLineStylesPosition => 3;
+        protected override int? OGPlotLinePosition => 3;
+        public override int? OGPlotOverscalePosition => 17;
+        public override int? OGPlotScalePosition => 3;
+        public override int Column => 4;
+    }
+}
+
+﻿namespace HwlFileAnalyzer.Drilling_Parameters.Gases
+{
+    class H2S : DrillingParameter
+    {
+        public H2S(HwlData hwlData) : base(hwlData) { }
+
+        //Filled out and accurate as of 7/21/2020
+        public override string ShortName => "H2S";
+        protected override int? GeoDisplayNamePosition => 9;
+        protected override int? GeoLineStylesPosition => 6;
+        protected override int? GeoPlotLinePosition => 15;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class TotalGas : DrillingParameter
+    {
+        public TotalGas(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+
+        //NOT READY
+        public override int Column => 4;
+        public override string ShortName => "TotalGas";
+        public override string UnitOfMeasurement => "Units";
+        protected override int? OGColorPosition => 20;
+        protected override int? OGLineStylesPosition => 18;
+        protected override int? OGPlotLinePosition => 3;
+        public override int? OGPlotOverscalePosition => 16;
+        public override int? OGPlotScalePosition => 2;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class Anhydrite : DrillingParameter
+    {
+        public Anhydrite(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+        //Fully filled and accurate as of 7/19/2020
+        public override int Column => 3;
+        protected override int? GeoColorPosition => 16;
+        protected override int? GeoDisplayNamePosition => 17;
+        protected override int? GeoPlotLinePosition => 10;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class Calcite : DrillingParameter
+    {
+        public Calcite(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+        //Fully filled and accurate as of 7/19/2020
+        public override int Column => 3;
+        protected override int? GeoColorPosition => 11;
+        protected override int? GeoDisplayNamePosition => 12;
+        protected override int? GeoPlotLinePosition => 5;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class Chlorite : DrillingParameter
+    {
+        public Chlorite(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+        //Fully filled and accurate as of 7/19/2020
+        public override int Column => 3;
+        protected override int? GeoColorPosition => 15;
+        protected override int? GeoDisplayNamePosition => 16;
+        protected override int? GeoPlotLinePosition => 9;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class Epidotal : DrillingParameter
+    {
+        public Epidotal(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+        //Fully filled and accurate as of 7/19/2020
+        public override int Column => 3;
+        protected override int? GeoColorPosition => 14;
+        protected override int? GeoDisplayNamePosition => 15;
+        protected override int? GeoPlotLinePosition => 8;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class Fractures : DrillingParameter
+    {
+        public Fractures(HwlData hwlData) : base(hwlData) { }
+
+        //Fully filled and accurate as of 7/19/2020
+        public override int Column => 3;
+        protected override int? GeoColorPosition => 8;
+        protected override int? GeoDisplayNamePosition => 19;
+        protected override int? GeoPlotLinePosition => 3;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class Hematite : DrillingParameter
+    {
+        public Hematite(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+        //Fully filled and accurate as of 7/19/2020
+        public override int Column => 3;
+        protected override int? GeoColorPosition => 13;
+        protected override int? GeoDisplayNamePosition => 14;
+        protected override int? GeoPlotLinePosition => 7;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class Pyrite : DrillingParameter
+    {
+        public Pyrite(HwlData hwlData) : base(hwlData) { }
+
+        //Fully filled and accurate as of 7/19/2020
+        public override int Column => 3;
+        protected override int? GeoColorPosition => 12;
+        protected override int? GeoDisplayNamePosition => 13;
+        protected override int? GeoPlotLinePosition => 6;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class Quartzite : DrillingParameter
+    {
+        public Quartzite(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+        //Fully filled and accurate as of 7/19/2020
+        public override int Column => 3;
+        protected override int? GeoColorPosition => 10;
+        protected override int? GeoDisplayNamePosition => 11;
+        protected override int? GeoPlotLinePosition => 4;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class Sericite : DrillingParameter
+    {
+        public Sericite(HwlData hwlData) : base(hwlData) { }
+
+        //Fully filled and accurate as of 7/19/2020
+        public override int Column => 3;
+        protected override int? GeoColorPosition => 17;
+        protected override int? GeoDisplayNamePosition => 18;
+        protected override int? GeoPlotLinePosition => 11;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class GainLoss : DrillingParameter
+    {
+        public GainLoss(HwlData hwlData) : base(hwlData) { }
+
+        //Fully filled and accurate as of 7/21/2020
+        public override int Column => 6;
+        public override string ShortName => "G/L";
+        public override string UnitOfMeasurement => "BBLs";
+        protected override int? GeoColorPosition => 23;
+        protected override int? GeoDisplayNamePosition => 34;
+        protected override int? GeoHeaderScalePosition => 10;
+        protected override int? GeoLineStylesPosition => 15;
+        protected override int? GeoPlotLinePosition => 42;
+        protected override int? OGColorPosition => 17;
+        protected override int? OGDisplayNamePosition => 16;
+        protected override int? OGHeaderScalePosition => 9;
+        protected override int? OGLineStylesPosition => 16;
+        protected override int? OGPlotLinePosition => 29;
+        public override int? OGPlotOverscalePosition => 21;
+        public override int? OGPlotScalePosition => 7;
+    }
+}
+﻿namespace HwlFileAnalyzer.DrillingParameters.Mud
+{
+    public class MudLoss : DrillingParameter
+    {
+        public MudLoss(HwlData hwlData) : base(hwlData) { }
+        public override string ShortName => "Mudloss";
+        protected override int? GeoColorPosition => 9;
+        protected override int? GeoDisplayNamePosition => 20;
+        protected override int? GeoHeaderScalePosition => 5;
+        protected override int? GeoPlotLinePosition => 18;
+
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class PitVolume : DrillingParameter
+    {
+        public PitVolume(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+
+        //Fully filled and accurate as of 7/21/2020
+        //NOT including the DP alternatives of Geo Linestyles (16) and Geo Header (35)
+        public override int Column => 6;
+        public override string ShortName => "Pit Vol";
+        public override string UnitOfMeasurement => "BBLs";
+        protected override int? GeoColorPosition => 4;
+        protected override int? GeoDisplayNamePosition => 8;
+        protected override int? GeoHeaderScalePosition => 4;
+        protected override int? GeoLineStylesPosition => 5;
+        protected override int? GeoPlotLinePosition => 17;
+        protected override int? OGColorPosition => 18;
+        protected override int? OGDisplayNamePosition => 17;
+        protected override int? OGHeaderScalePosition => 12;
+        protected override int? OGLineStylesPosition => 17;
+        protected override int? OGPlotLinePosition => 32;
+        public override int? OGPlotOverscalePosition => 22;
+        public override int? OGPlotScalePosition => 8;
+    }
+}
+﻿namespace HwlFileAnalyzer.DrillingParameters.Pumps
+{
+    class PressureIn : DrillingParameter
+    {
+        public PressureIn(HwlData hwlData) : base(hwlData) { }
+
+        //Filled out and accurate as of 07/21/2020
+        public override string ShortName => "Press In";
+        protected override int? GeoPlotLinePosition => 24;
+    }
+}
+
+﻿namespace HwlFileAnalyzer.DrillingParameters.Pumps
+{
+    class PressureOut : DrillingParameter
+    {
+        public PressureOut(HwlData hwlData) : base(hwlData) { }
+
+        //Filled out and accurate as of 07/21/2020
+        public override string ShortName => "Press Out";
+        protected override int? GeoPlotLinePosition => 25;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class PumpPressure : DrillingParameter
+    {
+        public PumpPressure(HwlData hwlData) : base(hwlData) { }
+
+        //Fully filled and accurate as of 7/21/2020
+        public override int Column => 4;
+        public override string ShortName => "Pump Press";
+        public override string UnitOfMeasurement => "PSI";
+        protected override int? GeoColorPosition => 18;
+        protected override int? GeoDisplayNamePosition => 27;
+        protected override int? GeoHeaderScalePosition => 6;
+        protected override int? GeoLineStylesPosition => 10;
+        protected override int? GeoPlotLinePosition => 37;
+        protected override int? OGColorPosition => 12;
+        protected override int? OGDisplayNamePosition => 11;
+        protected override int? OGHeaderScalePosition => 5;
+        protected override int? OGLineStylesPosition => 10;
+        protected override int? OGPlotLinePosition => 24;
+        public override int? OGPlotOverscalePosition => 23;
+        public override int? OGPlotScalePosition => 9;
+    }
+}
+﻿namespace HwlFileAnalyzer
+{
+    public class SPM : DrillingParameter
+    {
+        public SPM(HwlData hwlData) : base(hwlData) { }
+
+        //public override int Column => 4;
+        public override string UnitOfMeasurement => "SPM";
+        protected override int? GeoHeaderScalePosition => 7;
+        public override int? OGPlotOverscalePosition => 26;
+        public override int? OGPlotScalePosition => 12;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class SPM1 : SPM
+    {
+        public SPM1(HwlData hwlData) : base(hwlData) { }
+
+        //Fully filled and accurate as of 7/21/2020
+        public override string ShortName => "SPM 1";
+        protected override int? GeoColorPosition => 19;
+        protected override int? GeoDisplayNamePosition => 28;
+        protected override int? GeoLineStylesPosition => 11;
+        protected override int? GeoPlotLinePosition => 38;
+        protected override int? OGColorPosition => 13;
+        protected override int? OGDisplayNamePosition => 12;
+        protected override int? OGLineStylesPosition => 11;
+        protected override int? OGPlotLinePosition => 25;
+    }
+}
+﻿namespace HwlFileAnalyzer
+{
+    public class SPM2 : SPM
+    {
+        public SPM2(HwlData hwlData) : base(hwlData) { }
+
+        //Fully filled and accurate as of 7/21/2020
+        public override string ShortName => "SPM 2";
+        protected override int? GeoColorPosition => 20;
+        protected override int? GeoDisplayNamePosition => 29;
+        protected override int? GeoLineStylesPosition => 12;
+        protected override int? GeoPlotLinePosition => 39;
+        protected override int? OGColorPosition => 14;
+        protected override int? OGDisplayNamePosition => 13;
+        protected override int? OGLineStylesPosition => 12;
+        protected override int? OGPlotLinePosition => 26;
+        protected override int? GeoHeaderOverscalePosition => null;
+        protected override int? GeoHeaderScalePosition => null;
+    }
+}
+﻿namespace HwlFileAnalyzer
+{
+    public class SPM3 : SPM
+    {
+        public SPM3(HwlData hwlData) : base(hwlData) { }
+
+        //Fully filled out and accurate as of 07/21/2020
+        public override bool PlotEnabled { get; set; }
+        public override string ShortName => "SPM 3";
+        protected override int? GeoDisplayNamePosition => 45;
+        protected override int? OGColorPosition => 24;
+        protected override int? OGDisplayNamePosition => 23;
+        protected override int? OGLineStylesPosition => 13;
+        protected override int? OGPlotLinePosition => 33;
+
+        protected override int? GeoColorPosition => 32;
+        protected override int? GeoHeaderOverscalePosition => null;
+        protected override int? GeoHeaderScalePosition => null;
+        protected override int? GeoLineStylesPosition => 24;
+        protected override int? GeoPlotLinePosition => 51;
+
+    }
+}
+﻿namespace HwlFileAnalyzer
+{
+    public class SPM4 : SPM
+    {
+        public SPM4(HwlData hwlData) : base(hwlData) { }
+
+        //Fully filled out and accurate as of 07/21/2020
+        public override string ShortName => "SPM 4";
+        protected override int? GeoDisplayNamePosition => 46;
+
+        protected override int? GeoColorPosition => 33;
+        protected override int? GeoLineStylesPosition => 25;
+        protected override int? GeoPlotLinePosition => 52;
+        protected override int? GeoHeaderOverscalePosition => null;
+        protected override int? GeoHeaderScalePosition => null;
+
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class RPM : DrillingParameter
+    {
+        public RPM(HwlData hwlData) : base(hwlData) { }
+
+        //Fully filled out and accurate as of 07/21/2020
+        public override int Column => 7;
+        public override string UnitOfMeasurement => "RPM";
+        protected override int? GeoColorPosition => 24;
+        protected override int? GeoDisplayNamePosition => 37;
+        protected override int? GeoHeaderScalePosition => 11;
+        protected override int? GeoLineStylesPosition => 17;
+        protected override int? GeoPlotLinePosition => 43;
+        protected override int? OGColorPosition => 19;
+        protected override int? OGDisplayNamePosition => 18;
+        protected override int? OGHeaderScalePosition => 10;
+        protected override int? OGLineStylesPosition => 18;
+        protected override int? OGPlotLinePosition => 30;
+        public override int? OGPlotOverscalePosition => 24;
+        public override int? OGPlotScalePosition => 10;
+    }
+}
+﻿namespace HwlFileAnalyzer
+{
+    public class Torque : DrillingParameter
+    {
+        public Torque(HwlData hwlData)
+            : base(hwlData)
+        {
+        }
+
+        //Fully filled out and accurate as of 07/21/2020
+        public override int Column => 7;
+        public override string ShortName => "Torque";
+        public override string UnitOfMeasurement => "lbft";
+        protected override int? GeoColorPosition => 25;
+        protected override int? GeoDisplayNamePosition => 38;
+        protected override int? GeoHeaderScalePosition => 12;
+        protected override int? GeoLineStylesPosition => 18;
+        protected override int? GeoPlotLinePosition => 44;
+        protected override int? OGColorPosition => 20;
+        protected override int? OGDisplayNamePosition => 19;
+        protected override int? OGHeaderScalePosition => 11;
+        protected override int? OGLineStylesPosition => 19;
+        protected override int? OGPlotLinePosition => 31;
+        public override int? OGPlotOverscalePosition => 27;
+        public override int? OGPlotScalePosition => 13;
+    }
+}
+﻿namespace HwlFileAnalyzer
+{
+    public class Shows : DrillingParameter
+    {
+        public Shows(HwlData hwlData) : base(hwlData) { }
+
+        //Fully filled out and accurate as of 07/21/2020
+        public override string ShortName => "Shows";
+        public override int Column => 3;
+        protected override int? OGColorPosition => 10;
+        protected override int? OGHeaderScalePosition => 2;
+        protected override int? OGPlotLinePosition => 23;
+        public override int? OGPlotOverscalePosition => 25;
+        public override int? OGPlotScalePosition => 11;
+    }
+}
+
+﻿namespace HwlFileAnalyzer.Drilling_Parameters.Temperature
+{
+    public class TempDiff : DrillingParameter
+    {
+        public TempDiff(HwlData hwlData) : base(hwlData)
+        {
+
+        }
+
+        //Fully filled out and accurate as of 07/21/2020
+        public override int Column => 7;
+        public override Dictionary<double, int> Data
+        {
+            get
+            {
+                var dict = new Dictionary<double, int>();
+                DrillingParameter tempin = hwl.DrillingParameters.Find(i => i.GetType() == typeof(TemperatureIn));
+                DrillingParameter tempout = hwl.DrillingParameters.Find(i => i.GetType() == typeof(TemperatureOut));
+                foreach (var depth in hwl.Depths)
+                {
+                    dict.Add(depth, System.Math.Abs(tempin.Data[depth] - tempout.Data[depth]));
+                }
+
+                return dict;
+            }
+        }
+        public override bool PlotEnabled => true;
+        public override string UnitOfMeasurement => "Degrees F";
+        protected override int? GeoColorPosition => 7;
+        protected override int? GeoDisplayNamePosition => 25;
+        protected override int? GeoLineStylesPosition => 9;
+    }
+}
+
+﻿namespace HwlFileAnalyzer
+{
+    public class TemperatureIn : DrillingParameter
+    {
+        public TemperatureIn(HwlData hwlData) : base(hwlData) { }
+
+        //Fully filled out and accurate as of 07/21/2020
+        public override int Column => 7;
+        public override string ShortName => "TempIn";
+        public override string UnitOfMeasurement => "Degrees F";
+        protected override int? GeoHeaderScalePosition => 25;
+        protected override int? GeoHeaderOverscalePosition => 26;
+        protected override int? GeoColorPosition => 5;
+        protected override int? GeoDisplayNamePosition => 23;
+        protected override int? GeoLineStylesPosition => 7;
+        protected override int? GeoPlotLinePosition => 12;
+        public override bool PlotEnabled => true;
+    }
+}
+﻿namespace HwlFileAnalyzer
+{
+    public class TemperatureOut : DrillingParameter
+    {
+        public TemperatureOut(HwlData hwlData) : base(hwlData) { }
+
+        //Fully filled out and accurate as of 07/21/2020
+        public override int Column => 7;
+        public override string ShortName => "TempOut";
+        public override string UnitOfMeasurement => "Degrees F";
+        protected override int? GeoColorPosition => 6;
+        protected override int? GeoDisplayNamePosition => 24;
+        protected override int? GeoLineStylesPosition => 8;
+        protected override int? GeoHeaderScalePosition => 27;
+        protected override int? GeoHeaderOverscalePosition => 28;
+        protected override int? GeoPlotLinePosition => 13;
+        public override bool PlotEnabled => true;
+    }
+}
+
+﻿using System.Text.RegularExpressions;
+
+namespace HwlFileAnalyzer;
+
+public static class HwlParser
+{
+    // "*/"
+    public static List<string> ParseDescriptions(string line)
+    {
+        var items = line.Split("*/").ToList();
+        return items;
+    }
+
+    public static string UnparseDescriptions(List<string> items)
+    {
+        var line = string.Join("*/", items);
+        return line;
+    }
+
+    // "+|"
+    public static List<string> ParseHeaderLine(string line)
+    {
+        var items = Regex.Split(line, @"\+\|").ToList();
+
+        return items;
+    }
+
+    public static string UnparseHeaderLine(List<string> items)
+    {
+        var line = string.Join("+|", items);
+        return line;
+    }
+
+    // "^"
+    public static List<string> ParseHeaderSub(string line)
+    {
+        var items = line.Split("^").ToList();
+        return items;
+    }
+
+    public static string UnparseHeaderSub(List<string> items)
+    {
+        var line = string.Join("^", items);
+        return line;
+    }
+
+
+    // "\"
+    public static List<string> ParseMultiLine(string line)
+    {
+        var items = line.Split("\\").ToList();
+        return items;
+    }
+
+    public static string UnparseMultiLine(List<string> items)
+    {
+        var line = string.Join("\\", items);
+        return line;
+    }
+
+    // "|"
+    public static List<string> ParsePlotLine(string line)
+    {
+        var items = line.Split("|").ToList();
+        return items;
+    }
+
+    public static string UnparsePlotLine(List<string> items)
+    {
+        var line = string.Join("|", items);
+        return line;
+    }
+}
+﻿namespace HwlFileAnalyzer.Testing_New_Ideas
+{
+    public class TableOfContents
+    {
+
+
+        private readonly List<string> File;
+        public Dictionary<int, int> expectedHeaderItems;
+
+        private string FileType { get; }
+        public TableOfContents(List<string> rawText)
+        {
+            File = rawText ?? throw new ArgumentNullException(nameof(File));
+            FileType = HwlParser.ParseHeaderLine(rawText[0])[1];
+            InitializeExpectedHeaderItems();
+        }
+
+        public void InitializeExpectedHeaderItems()
+        {
+            expectedHeaderItems = new Dictionary<int, int>
+    {
+        { ProgramInfo, FileType == "OG" ? 20 : 18 },
+        { WellInfo, 22 },
+        { Colors, FileType == "OG" ? 28 : 34 },
+        // Try to figure out how you had done HeaderLegend stuff later because OG is split across two lines
+        //{ HeaderLegend, FileType == "OG" ? 12 : 34 },
+        { LineStyles, FileType == "OG" ? 26 : 27 },
+        { Lithology, 63 }
+    };
+        }
+
+
+        public int ProgramInfo => 0;
+        public int WellInfo => 1;
+        public int Colors => 2;
+
+        private int GeoDisplay => 3;
+        private int OGDisplay1 => 3;
+        private int OGDisplay2 => 4;
+        public int HeaderLegend => FileType == "OG" ? OGDisplay2 : GeoDisplay;
+
+        private int GeoLineStyles => 4;
+        private int OGLineStyles => 5;
+        public int LineStyles => FileType == "OG" ? OGLineStyles : GeoLineStyles;
+
+        private int GeoLithology => 5;
+        private int OGLithology => 6;
+        public int Lithology => FileType == "OG" ? OGLithology : GeoLithology;
+
+        private int[] GeoHeadScales => new int[] { 7 };
+        private int[] OGHeadScales => Enumerable.Range(8, 21).ToArray();
+        public int[] HeadScales => FileType == "OG" ? OGHeadScales : GeoHeadScales;
+
+        private int OGHeadScalesHeader => 7;
+
+        public List<int> Abbreviations
+        {
+            get
+            {
+                if (AbbreviationsHeader == -1)
+                {
+                    return null;
+                }
+                else
+                {
+                    List<int> lineList = new List<int>();
+                    for (int i = AbbreviationsHeader + 1; i < File.Count; i++)
+                    {
+                        if (File[i].Contains("|")) lineList.Add(i);
+                        else break;
+                    }
+
+                    return lineList;
+                }
+            }
+        }
+
+        public List<int> Annotations
+        {
+            get
+            {
+                if (AnnotationsHeader == -1)
+                {
+                    return null;
+                }
+                else
+                {
+                    List<int> lineList = new List<int>();
+                    for (int i = AnnotationsHeader + 1; i < File.Count; i++)
+                    {
+                        if (File[i].Contains("|")) lineList.Add(i);
+                        else break;
+                    }
+
+                    return lineList;
+                }
+            }
+        }
+
+        public List<int> CasingPoints
+        {
+            get
+            {
+                if (CasingPointsHeader == -1)
+                {
+                    return null;
+                }
+                else
+                {
+                    List<int> lineList = new List<int>();
+                    for (int i = CasingPointsHeader + 1; i < File.Count; i++)
+                    {
+                        if (File[i].Contains("|")) lineList.Add(i);
+                        else break;
+                    }
+
+                    return lineList;
+                }
+            }
+        }
+
+        public List<int> LithSymbols
+        {
+            get
+            {
+                if (LithSymbolsHeader == -1)
+                {
+                    return null;
+                }
+                else
+                {
+                    List<int> lineList = new List<int>();
+                    if (FileType == "OG")
+                    {
+                        for (int i = LithSymbolsHeader + 1; i < File.Count; i++)
+                        {
+                            if (File[i].StartsWith(" ")) lineList.Add(i);
+                            else break;
+                        }
+                    }
+                    else
+                    {
+                        lineList.Add(LithSymbolsHeader + 1);
+                    }
+
+                    return lineList;
+                }
+            }
+        }
+
+        public List<int> NewBits
+        {
+            get
+            {
+                if (NewBitsHeader == -1)
+                {
+                    return null;
+                }
+                else
+                {
+                    List<int> lineList = new List<int>();
+                    for (int i = NewBitsHeader + 1; i < File.Count; i++)
+                    {
+                        if (File[i].Contains("|")) lineList.Add(i);
+                        else break;
+                    }
+
+                    return lineList;
+                }
+            }
+        }
+
+        public List<int> OGPlotScales
+        {
+            get
+            {
+                if (PlotHeader == -1)
+                {
+                    return null;
+                }
+                else
+                {
+                    List<int> lineList = new List<int>();
+                    for (int i = PlotHeader + 1; i < File.Count; i++)
+                    {
+                        if (File[i].StartsWith("$")) lineList.Add(i);
+                        else continue;
+                    }
+
+                    return lineList;
+                }
+            }
+        }
+
+        public List<int> Plot
+        {
+            get
+            {
+                if (PlotHeader == -1)
+                {
+                    return null;
+                }
+                else
+                {
+                    List<int> lineList = new List<int>();
+                    for (int i = PlotHeader + 1; i < File.Count; i++)
+                    {
+                        if (i < File.Count - 1 && File[i + 1].StartsWith("$")) continue;
+                        if (File[i].StartsWith("$")) continue;
+                        else lineList.Add(i);
+                    }
+
+                    return lineList;
+                }
+            }
+        }
+
+        public int? TVD
+        {
+            get
+            {
+                if (TVDHeader == -1)
+                {
+                    return null;
+                }
+                else
+                {
+                    return TVDHeader + 1;
+                }
+            }
+        }
+
+        public int[] PlotLithology
+        {
+            get
+            {
+                if (FileType == "OG") return new int[] { 0, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22 };
+                else return new int[] { 0, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35 };
+            }
+        }
+
+        private int AbbreviationsHeader => File.IndexOf("Abbreviations");
+        private int AnnotationsHeader => File.IndexOf("Annotations");
+        private int CasingPointsHeader => File.IndexOf("CasingPoints");
+        private int LithSymbolsHeader => File.IndexOf("LithSymbols");
+        private int NewBitsHeader => File.IndexOf("NewBits");
+        private int PlotHeader => File.IndexOf("Data");
+        private int TVDHeader => File.IndexOf("TVD");
+
+    }
+}
+// <autogenerated />
+using System;
+using System.Reflection;
+[assembly: global::System.Runtime.Versioning.TargetFrameworkAttribute(".NETCoreApp,Version=v6.0", FrameworkDisplayName = ".NET 6.0")]
+
+//------------------------------------------------------------------------------
+// <auto-generated>
+//     This code was generated by a tool.
+//     Runtime Version:4.0.30319.42000
+//
+//     Changes to this file may cause incorrect behavior and will be lost if
+//     the code is regenerated.
+// </auto-generated>
+//------------------------------------------------------------------------------
+
+using System;
+using System.Reflection;
+
+[assembly: System.Reflection.AssemblyCompanyAttribute("HWLClassLibrary")]
+[assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
+[assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyProductAttribute("HWLClassLibrary")]
+[assembly: System.Reflection.AssemblyTitleAttribute("HWLClassLibrary")]
+[assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
+
+// Generated by the MSBuild WriteCodeFragment class.
+
+
+// <auto-generated/>
+global using global::System;
+global using global::System.Collections.Generic;
+global using global::System.IO;
+global using global::System.Linq;
+global using global::System.Net.Http;
+global using global::System.Threading;
+global using global::System.Threading.Tasks;
+
+// <autogenerated />
+using System;
+using System.Reflection;
+[assembly: global::System.Runtime.Versioning.TargetFrameworkAttribute(".NETCoreApp,Version=v6.0", FrameworkDisplayName = ".NET 6.0")]
+
+//------------------------------------------------------------------------------
+// <auto-generated>
+//     This code was generated by a tool.
+//     Runtime Version:4.0.30319.42000
+//
+//     Changes to this file may cause incorrect behavior and will be lost if
+//     the code is regenerated.
+// </auto-generated>
+//------------------------------------------------------------------------------
+
+using System;
+using System.Reflection;
+
+[assembly: System.Reflection.AssemblyCompanyAttribute("HWLClassLibrary")]
+[assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
+[assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyProductAttribute("HWLClassLibrary")]
+[assembly: System.Reflection.AssemblyTitleAttribute("HWLClassLibrary")]
+[assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
+
+// Generated by the MSBuild WriteCodeFragment class.
+
+
+// <auto-generated/>
+global using global::System;
+global using global::System.Collections.Generic;
+global using global::System.IO;
+global using global::System.Linq;
+global using global::System.Net.Http;
+global using global::System.Threading;
+global using global::System.Threading.Tasks;
+
+﻿namespace HwlFileAnalyzer.Testing_New_Ideas
+{
+    class DrillRateData
+    {
+        public int Color { get; }
+        public int ColorOverscale { get; }
+        public int Data { get; }
+        public int Scales { get; set; }
+        public int Overscales { get; set; }
+        public int Displayname { get; set; }
+        public int DisplaynameOverscale { get; set; }
+        public int LineStyles { get; set; }
+    }
+}
+
+﻿namespace HwlFileAnalyzer.Testing_New_Ideas
+{
+    public static class DrillRateFile
+    {
+        static int GeoColorPosition => 0;
+        static int GeoHeaderLegendPosition => 3;
+        static int GeoHeaderPosition => 2;
+        static int GeoHeadScalesPosition => 0;
+        static int GeoLineStylesPosition => 1;
+        static int GeoPlotPosition => 1;
+        static int OGColorsPosition => 4;
+        static int OGColorsOverscale => 5;
+        static int OGHeaderLegend2 => 4;
+        static int OGHeadLegend2Overscale => 5;
+        static int OGHeadScalesPosition => 0;
+        static int OGLinestylesPosition => 1;
+        static int OGPlotPosition => 1;
+        static int OGPlotOverscalePosition => 18;
+        static int OGPlotScalePosition => 4;
+    }
+
+    public class Test
+    {
+        HwlData Hwl;
+        Importer imp;
+        TableOfContents TOC;
+
+        public Test(HwlData hwl, Importer importer)
+        {
+            Hwl = hwl;
+            imp = importer;
+        }
+
+
+
+        public List<int> ImportPlotItem(int position)
+        {
+            var dpData = new List<int>();
+            foreach (var i in TOC.Plot)
+            {
+                var splitLine = HwlParser.ParsePlotLine(imp.RawText[i]);
+                dpData.Add(int.Parse(splitLine[position]));
+            }
+
+            return dpData;
+        }
+
+    }
+}
+
+﻿namespace HwlFileAnalyzer.Testing_New_Ideas
+{
+    interface IGeoPlottedParameter
+    {
+        List<int> Data { get; }
+        int Scales { get; set; }
+        int Overscales { get; set; }
+
+    }
+}
+
+﻿namespace HwlFileAnalyzer.Testing_New_Ideas
+{
+    interface IOGPlottedParameter
+    {
+        List<int> Data { get; }
+        List<int> Scales { get; set; }
+        List<int> Overscales { get; set; }
+    }
+}
+

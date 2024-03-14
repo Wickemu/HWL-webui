@@ -74,11 +74,25 @@
             Plot Scales
         </button>
     }
+    @if (Model.HwlData.Type == "GEO")
+    {
+        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#headerScalesTable" aria-expanded="false" aria-controls="headerScalesTable">
+            Header Scales
+        </button>
+    }
     <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#rawFileData" aria-expanded="false" aria-controls="rawFileData" onclick="loadRawFileContent()">
         Show Raw Text
     </button>
-    <button id="saveButton" type="submit" style="display: none;">Save</button>
-    <button id="exportButton" type="submit" style="display: none;">Export</button>
+
+    <div class="d-flex mt-3">
+        <button id="saveButton" data-well-type="@Model.HwlData.Type" type="submit" class="btn btn-primary me-1" style="display: none;">Save</button>
+        <button id="exportButton" type="submit" class="btn btn-primary me-1" style="display: none;">Export</button>
+        <button id="fixScalesButton" type="button" class="btn btn-primary me-1" style="display: none;">Fix Scales</button>
+        <button id="autoSetAllScalesButton" type="button" class="btn btn-primary">Auto-Set All Scales</button>
+    </div>
+
+
+
 
     <div class="collapse" id="programTable">
         <table class="table">
@@ -284,9 +298,6 @@
     }
     @if (Model.HwlData.Type == "GEO")
     {
-        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#headerScalesTable" aria-expanded="false" aria-controls="headerScalesTable">
-            Header Scales
-        </button>
         <div class="collapse" id="headerScalesTable">
             <table class="table">
                 <thead>
@@ -297,17 +308,10 @@
                     @foreach (var parameter in Model.HwlData.PlottedDrillingParameters)
                     {
                         var scale = parameter.HeaderScale;
-                        @*var overscale = parameter.HeaderOverscale;*@
-
                         if (scale.HasValue)
                         {
                             <th data-parameter-index="@parameterIndex">@parameter.DisplayName</th>
                         }
-
-                        @*if (overscale.HasValue)
-                        {
-                            <th data-parameter-index="@parameterIndex">@parameter.DisplayName Ovr</th>
-                        }*@
                         parameterIndex++;
                     }
                 </tr>
@@ -320,26 +324,18 @@
                     @foreach (var parameter in Model.HwlData.PlottedDrillingParameters)
                     {
                         var scale = parameter.HeaderScale;
-                        @*var overscale = parameter.HeaderOverscale;*@
 
                         if (scale.HasValue)
                         {
                             <td contenteditable="true" class="editable-cell" data-row="0" data-col="@colIndex">@scale</td>
                             colIndex++;
                         }
-
-                        @*if (overscale.HasValue)
-                        {
-                            <td contenteditable="true" class="editable-cell" data-row="0" data-col="@colIndex">@overscale</td>
-                            colIndex++;
-                        }*@
                     }
                 </tr>
                 </tbody>
             </table>
         </div>
     }
-
     <div class="collapse" id="rawFileData">
         <pre id="rawFileContent"></pre>
     </div>
@@ -347,16 +343,82 @@
 
     var warnings = Model.TestScales();
 
-
-@section Scripts {
+@section Scripts{
     <script>
-    @{ var serializedWarnings = JsonSerializer.Serialize(warnings); }
-    let warnings = JSON.parse('@Html.Raw(serializedWarnings)');
-    console.log("Warnings:", warnings); // Log the warnings to the console
-    if (warnings.length > 0) {
-        let allWarnings = warnings.join('\n');
-        alert(allWarnings);
-    }
+    
+        //Check and warn for scale issues
+        @{ var serializedWarnings = JsonSerializer.Serialize(warnings); }
+        let warnings = JSON.parse('@Html.Raw(serializedWarnings)');
+        console.log("Warnings:", warnings); // Log the warnings to the console
+        if (warnings.length > 0) {
+            let allWarnings = warnings.map(warning => warning.Message).join('\n');
+            alert(allWarnings);
+            document.getElementById("fixScalesButton").style.display = "block"; // Show the "Fix Scales" button
+        }
+        
+        //Replace all bad scales with suggested scale values
+        document.getElementById("fixScalesButton").addEventListener("click", (event) => updateScalesWithSuggestedValues(event));
+        function updateScalesWithSuggestedValues() {
+            fetch('/Index?handler=ApplySuggestedScales', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log("Suggested scales applied");
+                    console.log("Updated HwlData:", data.hwlData); // Log the updated HwlData object
+                    
+                    showExportButton(); // Show the export button
+
+                    // Show confirmation message and hide the 'Fix Scales' button
+                    alert("Data saved successfully.");
+                    //document.getElementById("fixScalesButton").style.display = "none";
+                } else {
+                    console.error("Error applying suggested scales");
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+            });
+        }
+        
+        document.getElementById("autoSetAllScalesButton").addEventListener("click", autoSetAllScales);
+
+        function autoSetAllScales() {
+    fetch('/Index?handler=AutoSetAllScales', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log("All suggested scales applied");
+            console.log("Updated HwlData:", data.hwlData);
+
+            showExportButton();
+
+            // Show confirmation message and hide the 'Auto-Set All Scales' button
+            alert("All scales have been auto-set successfully.");
+            document.getElementById("autoSetAllScalesButton").style.display = "none";
+
+            // Update the header scales table
+            updateHeaderScalesTable(data.hwlData.PlottedDrillingParameters);
+        } else {
+            console.error("Error auto-setting all scales");
+        }
+    })
+    .catch(error => {
+        console.error("Error:", error);
+    });
+}
+
 
     function loadRawFileContent() {
         const rawFileContentElement = document.getElementById("rawFileContent");
@@ -367,10 +429,10 @@
                     'Content-Type': 'application/json',
                 }
             })
-            .then(response => response.text())
-            .then(rawFileContent => {
-                rawFileContentElement.innerText = rawFileContent;
-            });
+                .then(response => response.text())
+                .then(rawFileContent => {
+                    rawFileContentElement.innerText = rawFileContent;
+                });
         }
     }
 
@@ -379,94 +441,94 @@
 
     // Function to show the save button
     function showSaveButton() {
-    document.getElementById("saveButton").style.display = "block";
+        document.getElementById("saveButton").style.display = "block";
     }
-    
+
     // Function to show the export button
     function showExportButton() {
-    document.getElementById("exportButton").style.display = "block";
+        document.getElementById("exportButton").style.display = "block";
     }
 
     function getEditedParameterIndex() {
-    const editedCell = document.querySelector(".editable-cell.edited");
-    if (editedCell) {
-        const colIndex = parseInt(editedCell.getAttribute("data-col"));
-        const header = document.querySelector(`th[data-parameter-index="${colIndex - 1}"]`);
-        const editedParameterIndex = parseInt(header.getAttribute("data-parameter-index"));
-        return editedParameterIndex;
-    }
-    return null;
+        const editedCell = document.querySelector(".editable-cell.edited");
+        if (editedCell) {
+            const colIndex = parseInt(editedCell.getAttribute("data-col"));
+            const header = document.querySelector(`th[data-parameter-index="${colIndex - 1}"]`);
+            const editedParameterIndex = parseInt(header.getAttribute("data-parameter-index"));
+            return editedParameterIndex;
+        }
+        return null;
     }
 
     // Add input event listeners to all editable cells and mark as edited
     editableCells.forEach(cell => {
-    cell.addEventListener("input", function () {
-        showSaveButton();
-        cell.classList.add("edited");
+        cell.addEventListener("input", function () {
+            showSaveButton();
+            cell.classList.add("edited");
+        });
     });
-    });
-    
+
     //Function to export the saved changes to a new hwl file
     document.getElementById("exportButton").addEventListener("click", function (e) {
         e.preventDefault();
-        
-        fetch('/Index?handler=ExportData', {
+
+        fetch("/Index?handler=ExportData")
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    alert("Error fetching export data.");
+                    throw new Error("Error fetching export data.");
+                }
+            })
+            .then(data => {
+                const rawText = data.rawText;
+                const fileContent = rawText.join("\r\n");
+
+                const blob = new Blob([fileContent], { type: "text/plain" });
+                const url = URL.createObjectURL(blob);
+
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = "exported_data.hwl";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                URL.revokeObjectURL(url);
+            })
+            .catch(error => {
+                console.error("Error:", error);
+            });
+    });
+
+    //Function to save header or plot scale changes to the HwlData object
+    document.getElementById("saveButton").addEventListener("click", function (e) {
+        e.preventDefault();
+        const editedCells = [];
+        const wellType = e.target.getAttribute("data-well-type");
+
+        editableCells.forEach(input => {
+            if (input.classList.contains("edited")) {
+                const row = parseInt(input.getAttribute("data-row"));
+                const col = parseInt(input.getAttribute("data-col"));
+
+                editedCells.push({
+                    row: row,
+                    col: col,
+                    newValue: input.innerText
+                });
+            }
+        });
+
+        // Choose the appropriate handler based on the well type
+        const handler = wellType.toUpperCase() === "GEO" ? "UpdateHeaderScales" : "UpdatePlotScales";
+
+        fetch(`/Index?handler=${handler}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
-            }
-        }).then(response => {
-            if (response.ok) {
-                return response.json();
-            } else {
-                alert("Error exporting data.");
-                throw new Error("Error exporting data.");
-            }
-        }).then(data => {
-            if (data.success) {
-                const exportedData = data.exportedData;
-                // Save the exported data as a file with the .hwl extension
-                saveAsFile(exportedData, "exported_data.hwl");
-            }
-        }).catch(error => {
-            console.error("Error:", error);
-        });
-    });
-
-    function saveAsFile(text, filename) {
-        const blob = new Blob([text], {type: "text/plain;charset=utf-8"});
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = filename;
-        link.click();
-        URL.revokeObjectURL(url);
-    }
-    
-    // Function to save PlotScale table changes to HwlData
-    document.getElementById("saveButton").addEventListener("click", function (e) {
-        e.preventDefault();
-        const editedCells = [];
-
-        editableCells.forEach(input => {
-            if (input.classList.contains("edited")) {
-            const row = parseInt(input.getAttribute("data-row"));
-            const col = parseInt(input.getAttribute("data-col"));
-
-            editedCells.push({
-                row: row,
-                col: col,
-                newValue: input.innerText
-            });
-            }
-        });
-
-        fetch('/Index?handler=UpdatePlotScales', {
-            method: 'POST',
-            headers: {
-            'Content-Type': 'application/json',
-            'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
             },
             body: JSON.stringify({ editedCells: editedCells }) // Wrap editedCells in an object
         }).then(response => {
@@ -480,28 +542,26 @@
             if (data.success) {
                 alert("Data saved successfully.");
                 updateTable(editedCells); // Update the table without reloading the page
-                console.log("Updated HwlData:", data.hwlData); // Log the updated HwlData object to the console
                 showExportButton();
             }
         }).catch(error => {
             console.error("Error:", error);
         });
-        console.log("Sending EditedCellsWrapper:", { editedCells: editedCells }); // Add this line
     });
 
     // Function to refresh the table
     function updateTable(editedCells) {
-    editedCells.forEach(cell => {
-        const row = cell.row;
-        const col = cell.col;
-        const newValue = cell.newValue;
+        editedCells.forEach(cell => {
+            const row = cell.row;
+            const col = cell.col;
+            const newValue = cell.newValue;
 
-        const table = document.querySelector(".table");
-        const tableRow = table.rows[row + 1]; // +1 to account for the header row
-        const tableCell = tableRow.cells[col];
+            const table = document.querySelector(".table");
+            const tableRow = table.rows[row + 1]; // +1 to account for the header row
+            const tableCell = tableRow.cells[col];
 
-        tableCell.innerText = newValue;
-    });
+            tableCell.innerText = newValue;
+        });
     }
 
     function saveFileContentToLocalStorage() {
@@ -509,7 +569,7 @@
         if (fileContentBase64) {
             localStorage.setItem("hwlDataFileContent", fileContentBase64);
         }
-    }
+        }
 
     // Call the function after the page loads
     document.addEventListener("DOMContentLoaded", function () {
@@ -517,12 +577,13 @@
     });
 
     function getFileContentFromLocalStorage() {
-            const fileContentBase64 = localStorage.getItem("hwlDataFileContent");
-            if (fileContentBase64) {
-                return atob(fileContentBase64);
-            }
-            return null;
+        const fileContentBase64 = localStorage.getItem("hwlDataFileContent");
+        if (fileContentBase64) {
+            return atob(fileContentBase64);
         }
-
-</script>
-}}
+        return null;
+    }
+    
+    </script>
+    }
+}

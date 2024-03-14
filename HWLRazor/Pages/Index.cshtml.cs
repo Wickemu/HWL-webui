@@ -1,4 +1,5 @@
 using System.Text;
+using HWLClassLibrary.Data_Service;
 using HwlFileAnalyzer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -36,6 +37,12 @@ public class IndexModel : PageModel
     {
         get => _hwlDataService.HwlData;
         set => _hwlDataService.HwlData = value;
+    }
+
+    public List<ScaleWarning> ScaleWarnings
+    {
+        get => _hwlDataService.ScaleWarnings;
+        set=> _hwlDataService.ScaleWarnings = value;
     }
 
     public Func<object, string> RenderTableHeaderProperty => RenderTableHeader;
@@ -182,26 +189,21 @@ public class IndexModel : PageModel
         return rowBuilder.ToString();
     }
 
-    public List<string> TestScales()
+    public List<ScaleWarning> TestScales()
     {
         if (HwlData.Type.ToUpper() == "GEO")
-        {
-            return TestHeaderScales();
-        }
-        else if (HwlData.Type.ToUpper() == "OG")
-        {
-            return TestPlotScales();
-        }
+            _hwlDataService.ScaleWarnings = TestHeaderScales();
+        if (HwlData.Type.ToUpper() == "OG")
+            _hwlDataService.ScaleWarnings = TestPlotScales();
 
-        return new List<string>(); // Return an empty list if the well type is neither GEO nor OG
+        return _hwlDataService.ScaleWarnings;
     }
 
-
-    public List<string> TestPlotScales()
+    public List<ScaleWarning> TestPlotScales()
     {
         _logger.LogInformation($"HwlData: {HwlData}");
 
-        var allWarnings = new List<string>();
+        var allWarnings = new List<ScaleWarning>();
 
         foreach (var parameter in HwlData.PlottedDrillingParameters)
             if (parameter.PlotEnabled)
@@ -210,22 +212,45 @@ public class IndexModel : PageModel
         return allWarnings;
     }
 
-    public List<string> TestHeaderScales()
+    public List<ScaleWarning> TestHeaderScales()
     {
         _logger.LogInformation($"HwlData: {HwlData}");
 
-        var allWarnings = new List<string>();
-
         foreach (var parameter in HwlData.PlottedDrillingParameters)
-        {
             if (parameter.HeaderScalePosition.HasValue || parameter.HeaderOverscalePosition.HasValue)
+                ScaleWarnings.AddRange(parameter.TestHeaderScales());
+
+        return ScaleWarnings;
+    }
+
+    public async Task<IActionResult> OnPostApplySuggestedScalesAsync()
+    {
+        if (ScaleWarnings != null)
+        {
+            foreach (var scaleWarning in ScaleWarnings)
             {
-                allWarnings.AddRange(parameter.TestHeaderScales());
+                var parameter = scaleWarning.Parameter;
+                parameter.ApplySuggestedScales();
+
+                if (HwlData.Type.ToUpper() == "GEO")
+                {
+                    Importer.RawText[Importer.TOC.HeadScales[0]] = Importer.UnparseHeaderLine(HwlData.HeaderScales);
+                }
+                else if (HwlData.Type.ToUpper() == "OG")
+                {
+                    for (int row = 0; row < HwlData.PlotScales.Count; row++)
+                    {
+                        Importer.RawText[Importer.TOC.OGPlotScales[row]] = Importer.UnparseOGPlotScales(HwlData.PlotScales[row]);
+                    }
+                }
             }
         }
+        HttpContext.Session.SetString("HwlData", JsonConvert.SerializeObject(HwlData));
 
-        return allWarnings;
+        return new JsonResult(new { success = true, hwlData = HwlData });
     }
+
+
 
 
     public IActionResult OnGetGetRawFileContent()
@@ -233,23 +258,72 @@ public class IndexModel : PageModel
         return Content(_hwlDataService.FileContent, "text/plain", Encoding.UTF8);
     }
 
-    // Export saved data to HWL file
-    public IActionResult OnPostExportData()
+    public IActionResult OnPostUpdateHeaderScales([FromBody] EditedCellsWrapper editedCellsWrapper)
     {
-        if (Importer.RawText == null || Importer.TOC.OGPlotScales == null || HwlData.PlotScales == null)
-            return BadRequest();
+        var editedCells = editedCellsWrapper.EditedCells;
 
-        var i = 0;
-        foreach (var index in Importer.TOC.OGPlotScales)
+        if (editedCells == null) return BadRequest();
+
+        if (HwlData == null || HwlData.DrillingParameters == null)
         {
-            Importer.RawText[index] = Importer.UnparseOGPlotScales(HwlData.PlotScales[i]);
-            i++;
+            Console.WriteLine("Error: HwlData or HwlData.DrillingParameters is null");
+            return BadRequest();
         }
 
-        // Combine the lines in Importer.RawText into a single string
-        var exportedData = string.Join(Environment.NewLine, Importer.RawText);
+        foreach (var cell in editedCells)
+        {
+            var row = cell.Row;
+            var col = cell.Col;
+            var newValue = int.Parse(cell.NewValue);
 
-        return new JsonResult(new { success = true, exportedData });
+            // Update the relevant DrillingParameter object using col information
+            var parameter = HwlData.DrillingParameters.ElementAtOrDefault(col);
+            if (parameter == null)
+            {
+                Console.WriteLine($"Error: Drilling parameter not found at index {col}");
+                continue;
+            }
+
+            // Update HeaderScales
+            HwlData.HeaderScales[col] = newValue;
+        }
+
+        Importer.RawText[Importer.TOC.HeadScales[0]] =
+            Importer.UnparseHeaderLine(HwlData.HeaderScales); // Save the updated HwlData object back to the session
+        HttpContext.Session.SetString("HwlData", JsonConvert.SerializeObject(HwlData));
+
+        return new JsonResult(new { success = true, hwlData = HwlData });
+    }
+
+    public IActionResult OnGetExportData()
+    {
+        if (Importer?.RawText == null) return BadRequest("Error: Importer or RawText is null.");
+
+        return new JsonResult(new { rawText = Importer.RawText });
+    }
+
+    public async Task<IActionResult> OnPostAutoSetAllScalesAsync()
+    {
+        foreach (var parameter in HwlData.PlottedDrillingParameters)
+        {
+            parameter.ApplySuggestedScales();
+
+            if (HwlData.Type.ToUpper() == "GEO")
+            {
+                Importer.RawText[Importer.TOC.HeadScales[0]] = Importer.UnparseHeaderLine(HwlData.HeaderScales);
+            }
+            else if (HwlData.Type.ToUpper() == "OG")
+            {
+                for (int row = 0; row < HwlData.PlotScales.Count; row++)
+                {
+                    Importer.RawText[Importer.TOC.OGPlotScales[row]] = Importer.UnparseOGPlotScales(HwlData.PlotScales[row]);
+                }
+            }
+        }
+
+        HttpContext.Session.SetString("HwlData", JsonConvert.SerializeObject(HwlData));
+
+        return new JsonResult(new { success = true, hwlData = HwlData });
     }
 
 

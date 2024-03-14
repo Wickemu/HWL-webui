@@ -5,9 +5,8 @@ namespace HwlFileAnalyzer;
 
 public class Importer
 {
-    public readonly TableOfContents TOC;
-
     private readonly ProgramInfo Program;
+    public readonly TableOfContents TOC;
 
     public Importer(string filePath)
     {
@@ -25,6 +24,12 @@ public class Importer
     public string UnparseOGPlotScales(List<string> items)
     {
         var result = "$" + string.Join("|", items);
+        return result;
+    }
+
+    public string UnparseHeaderLine(List<int> items)
+    {
+        var result = string.Join("|", items);
         return result;
     }
 
@@ -72,7 +77,7 @@ public class Importer
             foreach (var i in TOC.Annotations)
             {
                 var line = HwlParser.ParsePlotLine(RawText[i]);
-                annotations.Add(new AnnotationLine(line));
+                annotations.Add(new AnnotationLine(line, RawText[i]));
             }
 
             var sortedAnnotations = annotations.OrderBy(o => o.Depth).ToList();
@@ -386,10 +391,7 @@ public class Importer
 
     public List<TVDLine> ImportTVD()
     {
-        if (!TOC.TVD.HasValue)
-        {
-            return null;
-        }
+        if (!TOC.TVD.HasValue) return null;
 
         var tvd = new List<TVDLine>();
         var splitLines = RawText[TOC.TVD.Value].Split("|").ToList();

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using HWLClassLibrary.Data_Service;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,10 +7,5 @@ using System.Threading.Tasks;
 
 namespace HwlFileAnalyzer
 {
-    public interface IHwlDataService
-    {
-        HwlData HwlData { get; set; }
-        string FileContent { get; set; }
-        Importer Importer { get; set; }
-    }
+
 }
